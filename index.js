@@ -7,6 +7,7 @@ const twilio = require('twilio');
 const app = express();
 const PORT = process.env.PORT || 3024;
 
+app.set('view engine', 'ejs');
 app.use(bodyParser.json());
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -34,6 +35,10 @@ app.get('/makeAssignments', async (req, res) => {
         console.error('Error making assignments:', error.message);
         res.status(500).json({ error: 'Error making assignments.'})
     }
+});
+
+app.get('/', (req, res) => {
+    res.render('index', { port: PORT });
 });
 
 app.listen(PORT, () =>{
