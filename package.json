@@ -1,0 +1,18 @@
+{
+  "name": "secretsanta",
+  "version": "1.0.0",
+  "description": "An application to collect secret santa participant info and make assignments annonymously",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Full Stack Boston",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "nodemon": "^3.0.2",
+    "twilio": "^4.19.3"
+  }
+}

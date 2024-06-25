@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Santa Assignor</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 20px;
+        }
+        form {
+            max-width: 400px;
+            margin: auto;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #participantsList {
+            margin-top: 20px;
+            text-align: center; /* Center the list */
+        }
+        #participantsUl {
+            list-style: none;
+            padding: 0;
+        }
+        #participantsUl li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <form id="participantForm">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" placeholder="Mike Jones (except it's your name)" required>
+
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="tel" id="phoneNumber" name="phoneNumber" pattern="[0-9]{10}" placeholder="e.g., 281-330-8004 but without slashes" required>
+
+        <button type="button" onclick="addParticipant()">Add Participant</button>
+        <button type="button" onclick="makeAssignments()">Send Notifications</button>
+    </form>
+
+    <!-- Display the running list of participants -->
+    <div id="participantsList">
+        <h3>Participants List:</h3>
+        <ul id="participantsUl"></ul>
+    </div>
+
+    <script>
+        async function addParticipant() {
+            const nameInput = document.getElementById('name');
+            const phoneNumberInput = document.getElementById('phoneNumber');
+
+            const name = nameInput.value;
+            const phoneNumber = phoneNumberInput.value;
+
+            if (name === '' || phoneNumber === '') {
+                alert('Please fill out all fields correctly.');
+                return;
+            }
+
+            const data = {
+                name: name,
+                phoneNumber: phoneNumber
+            };
+
+            try {
+                const response = await fetch('http://localhost:3024/addParticipant', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+
+                // Update the participants list on the page
+                updateParticipantsList(data);
+
+                nameInput.value = '';
+                phoneNumberInput.value = '';
+            } catch (error) {
+                console.error('Error adding participant:', error.message);
+                alert('An error occurred while adding the participant. Please try again.');
+            }
+        }
+
+        function updateParticipantsList(participant) {
+            const participantsUl = document.getElementById('participantsUl');
+            const listItem = document.createElement('li');
+            listItem.textContent = `${participant.name} - ${participant.phoneNumber}`;
+            participantsUl.appendChild(listItem);
+        }
+
+        async function makeAssignments() {
+            try {
+                // Make a request to the /makeAssignments endpoint
+                const response = await fetch('http://localhost:3024/makeAssignments', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+
+                const responseData = await response.json();
+                console.log(responseData);
+            } catch (error) {
+                console.error('Error navigating to assignments:', error.message);
+                alert('An error occurred while navigating to assignments. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
