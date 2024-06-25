@@ -16,4 +16,4 @@ I built this project because my family wanted to do this event but could not get
 
 If this helps, enjoy!
 
-PLEASE NOTE: My family has English and Spanish speakers so the message in the SMS body contained in the server function is bilingual.  Feel free to modify that message as needed!
+PLEASE NOTE: My family has English and Spanish speakers so the message in the SMS body declared in the server function is bilingual.  Additionally, the current budget found in the message for presents is set to $25.  You may wish to modify that function as needed.
