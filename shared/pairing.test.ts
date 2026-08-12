@@ -13,11 +13,19 @@ function people(n: number): Participant[] {
 }
 
 describe("isValidSecretSantaPerm", () => {
-  it("rejects self and reciprocal pairs", () => {
+  it("rejects self, reciprocal, duplicate, and out-of-range maps", () => {
     expect(isValidSecretSantaPerm([0, 1])).toBe(false);
     expect(isValidSecretSantaPerm([1, 0])).toBe(false);
     expect(isValidSecretSantaPerm([1, 2, 0])).toBe(true);
     expect(isValidSecretSantaPerm([1, 2, 3, 0])).toBe(true);
+    expect(isValidSecretSantaPerm([1, 0, 2])).toBe(false); // reciprocal 0<->1
+    expect(isValidSecretSantaPerm([1, 1, 0])).toBe(false); // duplicate target
+    expect(isValidSecretSantaPerm([1, 2, 9])).toBe(false); // out of range
+    expect(isValidSecretSantaPerm([1, undefined as unknown as number, 0])).toBe(
+      false,
+    );
+    // Duplicate targets without an earlier reciprocal short-circuit.
+    expect(isValidSecretSantaPerm([1, 2, 3, 1])).toBe(false);
   });
 });
 
@@ -45,5 +53,12 @@ describe("assignSecretSantas", () => {
       participants.findIndex((p) => p.id === a.recipient.id),
     );
     expect(isValidSecretSantaPerm(perm)).toBe(true);
+  });
+
+  it("exhausts attempts when random never yields a valid perm", () => {
+    // random ~1 keeps Fisher-Yates as the identity map (all self-gifts) → invalid.
+    expect(() => assignSecretSantas(people(3), () => 0.999, 5)).toThrow(
+      /Could not find/,
+    );
   });
 });

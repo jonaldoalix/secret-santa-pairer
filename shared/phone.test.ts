@@ -16,7 +16,8 @@ describe("normalizePhone", () => {
 });
 
 describe("formatPhoneDisplay", () => {
-  it("formats NANP", () => {
+  it("formats NANP and passes through other lengths", () => {
     expect(formatPhoneDisplay("2813308004")).toBe("(281) 330-8004");
+    expect(formatPhoneDisplay("123")).toBe("123");
   });
 });

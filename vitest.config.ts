@@ -5,6 +5,24 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["shared/**/*.test.ts", "server/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "text-summary"],
+      include: ["shared/**/*.ts", "server/src/**/*.ts"],
+      exclude: [
+        "**/*.test.ts",
+        "shared/types.ts",
+        "server/src/testConfig.ts",
+        // Process entry only (listen + console); covered by createApp tests.
+        "server/src/index.ts",
+      ],
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
+      },
+    },
   },
   resolve: {
     alias: {

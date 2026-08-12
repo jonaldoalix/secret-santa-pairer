@@ -22,6 +22,8 @@ function findRoot(start: string): string {
   }
 }
 
+export { findRoot };
+
 const rootDir = findRoot(path.resolve(__dirname));
 
 dotenv.config({ path: path.join(rootDir, ".env") });

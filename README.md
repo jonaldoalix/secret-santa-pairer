@@ -76,10 +76,13 @@ In the UI, open **How to run this** / **Send for real** for the same recipes wit
 | Script | Purpose |
 |--------|---------|
 | `npm run dev` | API + Vite client |
-| `npm test` | Unit tests (pairing + messages) |
-| `npm run lint` | Typecheck |
+| `npm test` | Unit + API tests |
+| `npm run test:coverage` | Same tests with **100%** line/branch gate on `shared/` + `server/src/` |
+| `npm run lint` | oxlint + TypeScript |
 | `npm run build` | Client + server build |
 | `npm start` | Serve built app |
+
+CI on `main` also runs OSV (lockfile) and Semgrep (JS/TS/React).
 
 ## Contributing
 

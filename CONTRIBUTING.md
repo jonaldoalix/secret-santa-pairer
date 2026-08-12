@@ -17,9 +17,11 @@ Before opening a PR:
 
 ```bash
 npm run lint
-npm test
+npm run test:coverage
 npm run build
 ```
+
+Coverage must stay at **100%** for `shared/` and `server/src/` (process entry `server/src/index.ts` excluded).
 
 ## Guidelines
 
