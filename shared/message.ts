@@ -11,10 +11,10 @@ export interface MessageContext {
   templateEs?: string;
 }
 
-const DEFAULT_EN =
+export const DEFAULT_EN =
   "Hello {santa}! Your Secret Santa recipient is: {recipient}. DO NOT SHARE THIS WITH ANYONE. The budget is {budget}. See you {date}!";
 
-const DEFAULT_ES =
+export const DEFAULT_ES =
   "¡Hola {santa}! Su asignación para Secret Santa es {recipient}. MANTÉNGALO UN SECRETO. Por favor no excedas el presupuesto de {budget}. ¡Nos vemos {date}!";
 
 function fill(template: string, ctx: MessageContext): string {

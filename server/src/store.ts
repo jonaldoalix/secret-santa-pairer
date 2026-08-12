@@ -39,9 +39,29 @@ export class ParticipantStore {
 
 export function museumDemoSeed(): Participant[] {
   return [
-    { id: randomUUID(), name: "Alex", phone: "+15550101", email: "alex@example.com" },
-    { id: randomUUID(), name: "Bailey", phone: "+15550102", email: "bailey@example.com" },
-    { id: randomUUID(), name: "Casey", phone: "+15550103", email: "casey@example.com" },
-    { id: randomUUID(), name: "Drew", phone: "+15550104", email: "drew@example.com" },
+    {
+      id: randomUUID(),
+      name: "Alex",
+      phone: "(555) 201-0101",
+      email: "alex@example.com",
+    },
+    {
+      id: randomUUID(),
+      name: "Bailey",
+      phone: "(555) 201-0102",
+      email: "bailey@example.com",
+    },
+    {
+      id: randomUUID(),
+      name: "Casey",
+      phone: "(555) 201-0103",
+      email: "casey@example.com",
+    },
+    {
+      id: randomUUID(),
+      name: "Drew",
+      phone: "(555) 201-0104",
+      email: "drew@example.com",
+    },
   ];
 }

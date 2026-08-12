@@ -1,4 +1,5 @@
 import type { Assignment, DeliveryRecord, NotifyProviderId } from "../../../shared/types.js";
+import { normalizePhone } from "../../../shared/phone.js";
 import type { AppConfig } from "../config.js";
 
 export interface NotifyContext {
@@ -24,5 +25,7 @@ export function destinationFor(
     return santa.phone || santa.email || "unknown";
   }
   if (!santa.phone) throw new Error(`${santa.name} is missing a phone number.`);
-  return santa.phone;
+  const digits = normalizePhone(santa.phone);
+  if (!digits) throw new Error(`${santa.name} has an invalid phone number.`);
+  return `+1${digits}`;
 }

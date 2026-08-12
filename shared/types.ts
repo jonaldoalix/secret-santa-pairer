@@ -39,7 +39,18 @@ export interface PublicConfig {
   eventDate: string;
   eventLabel: string;
   messageLocale: MessageLocale;
+  templateEn: string;
+  templateEs: string;
   participantCount: number;
+}
+
+export interface EditableConfig {
+  giftBudget: string;
+  eventDate: string;
+  eventLabel: string;
+  messageLocale: MessageLocale;
+  templateEn: string;
+  templateEs: string;
 }
 
 export interface AssignResult {

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type {
   AssignResult,
+  MessageLocale,
   Participant,
   PublicConfig,
 } from "../../shared/types";
@@ -17,14 +18,36 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data;
 }
 
+type SettingsDraft = {
+  giftBudget: string;
+  eventDate: string;
+  eventLabel: string;
+  messageLocale: MessageLocale;
+  templateEn: string;
+  templateEs: string;
+};
+
+function draftFromConfig(cfg: PublicConfig): SettingsDraft {
+  return {
+    giftBudget: cfg.giftBudget,
+    eventDate: cfg.eventDate,
+    eventLabel: cfg.eventLabel,
+    messageLocale: cfg.messageLocale,
+    templateEn: cfg.templateEn,
+    templateEs: cfg.templateEs,
+  };
+}
+
 export function App() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [settings, setSettings] = useState<SettingsDraft | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [result, setResult] = useState<AssignResult | null>(null);
 
   const evenReady = participants.length >= 2 && participants.length % 2 === 0;
@@ -32,8 +55,10 @@ export function App() {
   const contactHint = useMemo(() => {
     if (!config) return "";
     if (config.contactMode === "email") return "Email required for SMTP notify.";
-    if (config.contactMode === "phone") return "Phone required for SMS notify.";
-    return "Phone or email is enough in museum/stub mode.";
+    if (config.contactMode === "phone") {
+      return "10-digit US/Canada phone required for SMS notify.";
+    }
+    return "10-digit phone or email works in museum/stub mode.";
   }, [config]);
 
   useEffect(() => {
@@ -44,6 +69,7 @@ export function App() {
           api<{ participants: Participant[] }>("/participants"),
         ]);
         setConfig(cfg);
+        setSettings(draftFromConfig(cfg));
         setParticipants(list.participants);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load app.");
@@ -51,9 +77,31 @@ export function App() {
     })();
   }, []);
 
+  async function onSaveSettings(event: FormEvent) {
+    event.preventDefault();
+    if (!settings) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const cfg = await api<PublicConfig>("/config", {
+        method: "PATCH",
+        body: JSON.stringify(settings),
+      });
+      setConfig(cfg);
+      setSettings(draftFromConfig(cfg));
+      setNotice("Event settings saved for this session.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save settings.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onAdd(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
     setResult(null);
     setBusy(true);
     try {
@@ -74,6 +122,7 @@ export function App() {
 
   async function onRemove(id: string) {
     setError(null);
+    setNotice(null);
     setResult(null);
     setBusy(true);
     try {
@@ -90,6 +139,7 @@ export function App() {
 
   async function onReset() {
     setError(null);
+    setNotice(null);
     setResult(null);
     setBusy(true);
     try {
@@ -115,6 +165,7 @@ export function App() {
     if (!confirmed) return;
 
     setError(null);
+    setNotice(null);
     setBusy(true);
     try {
       const data = await api<AssignResult>("/assign", { method: "POST" });
@@ -139,11 +190,11 @@ export function App() {
 
       <main className="shell">
         <header className="hero">
-          <p className="sr-only">Secret Santa Pairer</p>
+          <p className="kicker">Papers in a hat · privately</p>
           <h1 className="brand">Secret Santa Pairer</h1>
           <p className="lede">
-            Collect your group, shuffle like names in a hat, and privately notify each
-            person of their recipient — even when you cannot gather in person.
+            Drop in the crew, give the hat a shake, and send each person their recipient
+            without anyone — including you — spoiling the surprise.
           </p>
           {config ? (
             <div className="meta" aria-label="Event settings">
@@ -156,8 +207,96 @@ export function App() {
           ) : null}
         </header>
 
+        {settings ? (
+          <section className="panel" aria-labelledby="settings-heading">
+            <h2 id="settings-heading">Host controls</h2>
+            <p className="panel-intro">
+              Tune the event copy for this run. Placeholders:{" "}
+              <code>{"{santa}"}</code>, <code>{"{recipient}"}</code>,{" "}
+              <code>{"{budget}"}</code>, <code>{"{date}"}</code>, <code>{"{event}"}</code>.
+            </p>
+            <form className="form-grid two" onSubmit={onSaveSettings}>
+              <label>
+                Event name
+                <input
+                  value={settings.eventLabel}
+                  onChange={(e) =>
+                    setSettings({ ...settings, eventLabel: e.target.value })
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Gift budget
+                <input
+                  value={settings.giftBudget}
+                  onChange={(e) =>
+                    setSettings({ ...settings, giftBudget: e.target.value })
+                  }
+                  required
+                />
+              </label>
+              <label>
+                When you meet
+                <input
+                  value={settings.eventDate}
+                  onChange={(e) =>
+                    setSettings({ ...settings, eventDate: e.target.value })
+                  }
+                  placeholder="Dec 24"
+                  required
+                />
+              </label>
+              <label>
+                Message language
+                <select
+                  value={settings.messageLocale}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      messageLocale: e.target.value as MessageLocale,
+                    })
+                  }
+                >
+                  <option value="bilingual">Bilingual EN + ES</option>
+                  <option value="en">English only</option>
+                  <option value="es">Spanish only</option>
+                </select>
+              </label>
+              <label style={{ gridColumn: "1 / -1" }}>
+                English template
+                <textarea
+                  value={settings.templateEn}
+                  onChange={(e) =>
+                    setSettings({ ...settings, templateEn: e.target.value })
+                  }
+                  required
+                />
+              </label>
+              <label style={{ gridColumn: "1 / -1" }}>
+                Spanish template
+                <textarea
+                  value={settings.templateEs}
+                  onChange={(e) =>
+                    setSettings({ ...settings, templateEs: e.target.value })
+                  }
+                  required
+                />
+              </label>
+              <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
+                <button className="btn btn-secondary" type="submit" disabled={busy}>
+                  Save event settings
+                </button>
+              </div>
+            </form>
+            <p className="template-hint">
+              Settings apply to this server session (restart resets to .env defaults).
+            </p>
+          </section>
+        ) : null}
+
         <section className="panel" aria-labelledby="add-heading">
-          <h2 id="add-heading">Add participants</h2>
+          <h2 id="add-heading">Add to the hat</h2>
           <form className="form-grid two" onSubmit={onAdd}>
             <label>
               Name
@@ -171,13 +310,15 @@ export function App() {
             </label>
             {config?.contactMode !== "email" ? (
               <label>
-                Phone
+                Phone (10 digits)
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1 555 0100"
-                  inputMode="tel"
+                  placeholder="2813308004"
+                  inputMode="numeric"
                   autoComplete="tel"
+                  pattern="[\d\s()+-]{10,20}"
+                  title="Enter a 10-digit phone number"
                   required={config?.contactMode === "phone"}
                 />
               </label>
@@ -197,7 +338,7 @@ export function App() {
             ) : null}
             <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
               <button className="btn btn-primary" type="submit" disabled={busy}>
-                Add participant
+                Drop in the hat
               </button>
             </div>
           </form>
@@ -206,12 +347,12 @@ export function App() {
 
         <section className="panel" aria-labelledby="list-heading">
           <h2 id="list-heading">
-            Participants ({participants.length})
+            In the hat ({participants.length})
             {!evenReady && participants.length > 0 ? " — need an even count" : ""}
           </h2>
 
           {participants.length === 0 ? (
-            <p className="empty">No one yet. Add an even number of people to begin.</p>
+            <p className="empty">Empty hat. Add an even number of people to begin.</p>
           ) : (
             <ul className="list">
               {participants.map((p) => (
@@ -240,7 +381,7 @@ export function App() {
               disabled={busy || !evenReady}
               onClick={() => void onAssign()}
             >
-              {config?.museumMode ? "Shuffle & preview" : "Shuffle & notify"}
+              {config?.museumMode ? "Shake & preview" : "Shake & notify"}
             </button>
             <button
               className="btn btn-secondary"
@@ -248,9 +389,15 @@ export function App() {
               disabled={busy}
               onClick={() => void onReset()}
             >
-              {config?.museumMode ? "Reset demo roster" : "Clear all"}
+              {config?.museumMode ? "Reset demo roster" : "Empty the hat"}
             </button>
           </div>
+
+          {notice ? (
+            <p className="status ok" role="status">
+              {notice}
+            </p>
+          ) : null}
 
           {error ? (
             <p className="status error" role="alert">
