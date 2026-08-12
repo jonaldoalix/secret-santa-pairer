@@ -8,6 +8,7 @@ import type {
   RevealPeek,
   RevealStatus,
 } from "../../shared/types";
+import { SetupDialog, type SetupTab } from "./SetupDialog";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
@@ -64,7 +65,14 @@ export function App() {
   const [assignResult, setAssignResult] = useState<AssignResult | null>(null);
   const [reveal, setReveal] = useState<RevealStatus | null>(null);
   const [peekName, setPeekName] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupTab, setSetupTab] = useState<SetupTab>("use");
   const holdingRef = useRef(false);
+
+  function openSetup(tab: SetupTab = "use") {
+    setSetupTab(tab);
+    setSetupOpen(true);
+  }
 
   const ready = participants.length >= 3;
   const availableMessages = settings?.messages ?? config?.messages ?? [];
@@ -378,10 +386,19 @@ export function App() {
     <>
       {config?.museumMode ? (
         <div className="museum-banner" role="status">
-          <strong>Museum demo</strong>
-          <span>
-            No real SMS or email is sent. Deliveries are stubbed for evaluation only.
-          </span>
+          <div className="museum-banner-copy">
+            <strong>Museum demo</strong>
+            <span>
+              No real SMS or email is sent. Deliveries are stubbed for evaluation only.
+            </span>
+          </div>
+          <button
+            type="button"
+            className="museum-banner-action"
+            onClick={() => openSetup("send")}
+          >
+            Send for real
+          </button>
         </div>
       ) : null}
 
@@ -400,12 +417,26 @@ export function App() {
                 Budget {settings?.giftBudget ?? config?.giftBudget}
               </span>
               <span className="chip">{settings?.eventDate ?? config?.eventDate}</span>
-              <span className="chip">Notify: {config?.notifyProvider}</span>
+              <button
+                type="button"
+                className="chip chip-action"
+                onClick={() => openSetup("send")}
+                title="How notify is configured"
+              >
+                Notify: {config?.notifyProvider}
+              </button>
               {availableMessages.map((m) => (
                 <span className="chip" key={m.id}>
                   {m.label}
                 </span>
               ))}
+              <button
+                type="button"
+                className="chip chip-action chip-guide"
+                onClick={() => openSetup("use")}
+              >
+                How to run this
+              </button>
             </div>
           ) : null}
         </header>
@@ -783,6 +814,14 @@ export function App() {
           </p>
         ) : null}
       </main>
+
+      <SetupDialog
+        open={setupOpen}
+        tab={setupTab}
+        config={config}
+        onTabChange={setSetupTab}
+        onClose={() => setSetupOpen(false)}
+      />
     </>
   );
 }
