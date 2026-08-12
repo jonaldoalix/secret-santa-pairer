@@ -1,6 +1,7 @@
 import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AssignResult,
+  DeliveryMode,
   MessageBlock,
   Participant,
   PublicConfig,
@@ -56,6 +57,7 @@ export function App() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [languageIds, setLanguageIds] = useState<string[]>([]);
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("reveal");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -180,7 +182,7 @@ export function App() {
     try {
       const data = await api<{ participants: Participant[] }>("/participants", {
         method: "POST",
-        body: JSON.stringify({ name, phone, email, languageIds }),
+        body: JSON.stringify({ name, phone, email, languageIds, deliveryMode }),
       });
       setParticipants(data.participants);
       setName("");
@@ -188,6 +190,26 @@ export function App() {
       setEmail("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add participant.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onSetDeliveryMode(participant: Participant, mode: DeliveryMode) {
+    if (participant.deliveryMode === mode) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const data = await api<{ participants: Participant[] }>(
+        `/participants/${participant.id}/delivery`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ deliveryMode: mode }),
+        },
+      );
+      setParticipants(data.participants);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update delivery mode.");
     } finally {
       setBusy(false);
     }
@@ -255,11 +277,13 @@ export function App() {
 
   async function onAssign() {
     if (!ready) {
-      setError("Add at least 3 participants before shuffling.");
+      setError("Add at least 3 participants before pairing.");
       return;
     }
+    const sendCount = participants.filter((p) => p.deliveryMode === "send").length;
+    const revealCount = participants.filter((p) => p.deliveryMode === "reveal").length;
     const confirmed = window.confirm(
-      "Shuffle pairings and start the private reveal line? Nobody else should see the screen except the person being called.",
+      `Start pairing now? This will send to ${sendCount} people and open the private reveal line for ${revealCount} people.`,
     );
     if (!confirmed) return;
 
@@ -271,10 +295,22 @@ export function App() {
       const data = await api<AssignResult>("/assign", { method: "POST" });
       setAssignResult(data);
       const status = await api<RevealStatus>("/reveal");
-      setReveal(status);
-      setNotice("Hat shaken. Call the first person to the screen.");
+      setReveal(status.active || status.complete ? status : null);
+
+      const bits: string[] = [`Paired ${data.assignmentCount}.`];
+      if (data.sentCount || data.failedCount) {
+        bits.push(
+          `Sent ${data.sentCount}${data.failedCount ? `, ${data.failedCount} failed` : ""}.`,
+        );
+      }
+      if (data.revealReady) {
+        bits.push("Call the first reveal person to the screen.");
+      } else if (data.revealCount === 0) {
+        bits.push("No on-screen reveals needed.");
+      }
+      setNotice(bits.join(" "));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Assignment failed.");
+      setError(err instanceof Error ? err.message : "Pairing failed.");
     } finally {
       setBusy(false);
     }
@@ -379,9 +415,10 @@ export function App() {
             <h2 id="reveal-heading">Private reveal</h2>
             {revealDone ? (
               <>
-                <p className="reveal-call">All set. Everyone has seen their pairing.</p>
+                <p className="reveal-call">All set. On-screen reveals are finished.</p>
                 <p className="panel-intro">
-                  Optional: send the same results remotely with your notify provider.
+                  Send-mode people were already notified when pairing started. You can
+                  resend just those if needed.
                 </p>
                 <div className="actions">
                   <button
@@ -390,7 +427,7 @@ export function App() {
                     disabled={busy}
                     onClick={() => void onNotify()}
                   >
-                    {config?.museumMode ? "Stub notify log" : "Send notifications"}
+                    {config?.museumMode ? "Resend stub notify" : "Resend notifications"}
                   </button>
                 </div>
               </>
@@ -601,6 +638,30 @@ export function App() {
                 </div>
               </fieldset>
 
+              <fieldset className="lang-fieldset">
+                <legend>How they learn the pairing</legend>
+                <div className="lang-options">
+                  <label className="lang-option">
+                    <input
+                      type="radio"
+                      name="deliveryMode"
+                      checked={deliveryMode === "reveal"}
+                      onChange={() => setDeliveryMode("reveal")}
+                    />
+                    <span>Reveal on screen</span>
+                  </label>
+                  <label className="lang-option">
+                    <input
+                      type="radio"
+                      name="deliveryMode"
+                      checked={deliveryMode === "send"}
+                      onChange={() => setDeliveryMode("send")}
+                    />
+                    <span>Send message</span>
+                  </label>
+                </div>
+              </fieldset>
+
               <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
                 <button className="btn btn-primary" type="submit" disabled={busy}>
                   Drop in the hat
@@ -628,7 +689,8 @@ export function App() {
                       <strong>{p.name}</strong>
                       <span>{[p.phone, p.email].filter(Boolean).join(" · ")}</span>
                       <span className="lang-summary">
-                        Receives: {labelsFor(p, availableMessages) || "none"}
+                        Receives: {labelsFor(p, availableMessages) || "none"} ·{" "}
+                        {p.deliveryMode === "send" ? "Send" : "Reveal"}
                       </span>
                       <div className="lang-options compact">
                         {availableMessages.map((m) => (
@@ -642,6 +704,28 @@ export function App() {
                             <span>{m.label}</span>
                           </label>
                         ))}
+                      </div>
+                      <div className="lang-options compact">
+                        <label className="lang-option">
+                          <input
+                            type="radio"
+                            name={`delivery-${p.id}`}
+                            checked={p.deliveryMode === "reveal"}
+                            disabled={busy}
+                            onChange={() => void onSetDeliveryMode(p, "reveal")}
+                          />
+                          <span>Reveal</span>
+                        </label>
+                        <label className="lang-option">
+                          <input
+                            type="radio"
+                            name={`delivery-${p.id}`}
+                            checked={p.deliveryMode === "send"}
+                            disabled={busy}
+                            onChange={() => void onSetDeliveryMode(p, "send")}
+                          />
+                          <span>Send</span>
+                        </label>
                       </div>
                     </div>
                     <button
@@ -661,10 +745,10 @@ export function App() {
               <button
                 className="btn btn-primary"
                 type="button"
-                disabled={busy || !ready || revealDone}
+                disabled={busy || !ready || inReveal}
                 onClick={() => void onAssign()}
               >
-                Shake hat and start reveal
+                Start Pairing
               </button>
               <button
                 className="btn btn-secondary"
@@ -676,9 +760,10 @@ export function App() {
               </button>
             </div>
 
-            {assignResult && !reveal?.active ? (
+            {assignResult && !inReveal && !revealDone ? (
               <p className="status ok" role="status">
-                Paired {assignResult.assignmentCount} people. Start reveal to continue.
+                Last run: paired {assignResult.assignmentCount}, sent{" "}
+                {assignResult.sentCount}, reveal queue {assignResult.revealCount}.
               </p>
             ) : null}
           </section>

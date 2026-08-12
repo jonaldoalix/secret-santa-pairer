@@ -19,6 +19,7 @@ const participantBody = z.object({
     .transform((v) => (v && v.length > 0 ? v : undefined))
     .pipe(z.union([z.undefined(), z.string().email()])),
   languageIds: z.array(z.string().trim().min(1).max(64)).min(1).max(8),
+  deliveryMode: z.enum(["reveal", "send"]),
 });
 
 const messageBlock = z.object({
@@ -95,7 +96,7 @@ export function createApiRouter(
       return;
     }
 
-    const { name, email, languageIds } = parsed.data;
+    const { name, email, languageIds, deliveryMode } = parsed.data;
     const emailValue = email || undefined;
     const rawPhone = parsed.data.phone?.trim() || "";
     let phoneValue: string | undefined;
@@ -138,8 +139,23 @@ export function createApiRouter(
       phone: phoneValue,
       email: emailValue,
       languageIds: selected,
+      deliveryMode,
     });
     res.status(201).json({ participant, participants: store.list() });
+  });
+
+  router.patch("/participants/:id/delivery", (req, res) => {
+    const mode = z.enum(["reveal", "send"]).safeParse(req.body?.deliveryMode);
+    if (!mode.success) {
+      res.status(400).json({ error: "deliveryMode must be reveal or send." });
+      return;
+    }
+    const participant = store.updateDeliveryMode(req.params.id, mode.data);
+    if (!participant) {
+      res.status(404).json({ error: "Participant not found." });
+      return;
+    }
+    res.json({ participant, participants: store.list() });
   });
 
   router.patch("/participants/:id/languages", (req, res) => {
@@ -187,7 +203,7 @@ export function createApiRouter(
     res.json({ participants: store.list() });
   });
 
-  router.post("/assign", (_req, res) => {
+  router.post("/assign", async (_req, res) => {
     try {
       const participants = store.list();
       if (participants.length < 3) {
@@ -206,12 +222,33 @@ export function createApiRouter(
         return;
       }
 
+      const sendPeople = participants.filter((p) => p.deliveryMode === "send");
+      if (sendPeople.length > 0) {
+        assertProviderReady(config);
+      }
+
       const assignments = assignSecretSantas(participants);
       reveal.start(assignments);
 
+      let sentCount = 0;
+      let failedCount = 0;
+      const toSend = reveal.getSendAssignments();
+      if (toSend.length > 0) {
+        const notifier = getNotifier(config.notifyProvider);
+        const deliveries = await notifier.sendAll({ config, assignments: toSend });
+        sentCount = deliveries.filter(
+          (d) => d.status === "sent" || d.status === "stubbed",
+        ).length;
+        failedCount = deliveries.filter((d) => d.status === "failed").length;
+      }
+
+      const revealStatus = reveal.status();
       const result: AssignResult = {
         assignmentCount: assignments.length,
-        revealReady: true,
+        revealCount: revealStatus.total,
+        sentCount,
+        failedCount,
+        revealReady: revealStatus.active && !revealStatus.complete,
         museumMode: config.museumMode,
       };
       res.json(result);
@@ -253,10 +290,10 @@ export function createApiRouter(
   router.post("/notify", async (_req, res) => {
     try {
       assertProviderReady(config);
-      const assignments = reveal.getAssignments();
+      const assignments = reveal.getSendAssignments();
       if (assignments.length === 0) {
         res.status(400).json({
-          error: "Shake the hat first so there are pairings to notify.",
+          error: "No send-mode participants in the current pairing.",
         });
         return;
       }

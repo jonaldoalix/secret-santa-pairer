@@ -14,6 +14,8 @@ export interface MessageBlock {
   body: string;
 }
 
+export type DeliveryMode = "reveal" | "send";
+
 export interface Participant {
   id: string;
   name: string;
@@ -21,6 +23,8 @@ export interface Participant {
   email?: string;
   /** Message block ids this person should receive. */
   languageIds: string[];
+  /** How this person learns their pairing. */
+  deliveryMode: DeliveryMode;
 }
 
 export interface Assignment {
@@ -58,6 +62,9 @@ export interface EditableConfig {
 
 export interface AssignResult {
   assignmentCount: number;
+  revealCount: number;
+  sentCount: number;
+  failedCount: number;
   revealReady: boolean;
   museumMode: boolean;
 }

@@ -4,7 +4,8 @@ Privately shuffle Secret Santa assignments and notify each participant of their 
 
 ## Features
 
-- Host flow: add participants (3+) -> private on-screen reveal and/or remote notify
+- Host flow: add participants (3+) -> Start Pairing (send + on-screen reveal in one step)
+- Per person: reveal on screen or send message
 - Fair pairing for odd or even groups: no self-gifts, no mutual pairs
 - One-at-a-time press-and-hold reveal so only the called player sees their recipient
 - Configurable budget, event date/label, and **any-language** message catalog

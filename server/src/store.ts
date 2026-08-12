@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Participant } from "../../shared/types.js";
+import type { DeliveryMode, Participant } from "../../shared/types.js";
 
 export class ParticipantStore {
   private participants: Participant[] = [];
@@ -19,6 +19,7 @@ export class ParticipantStore {
       phone: input.phone?.trim() || undefined,
       email: input.email?.trim() || undefined,
       languageIds: [...input.languageIds],
+      deliveryMode: input.deliveryMode,
     };
     this.participants.push(participant);
     return participant;
@@ -28,6 +29,13 @@ export class ParticipantStore {
     const participant = this.participants.find((p) => p.id === id);
     if (!participant) return null;
     participant.languageIds = [...languageIds];
+    return participant;
+  }
+
+  updateDeliveryMode(id: string, deliveryMode: DeliveryMode): Participant | null {
+    const participant = this.participants.find((p) => p.id === id);
+    if (!participant) return null;
+    participant.deliveryMode = deliveryMode;
     return participant;
   }
 
@@ -50,6 +58,7 @@ export class ParticipantStore {
       ...p,
       id: p.id || randomUUID(),
       languageIds: [...(p.languageIds || [])],
+      deliveryMode: p.deliveryMode || "reveal",
     }));
   }
 }
@@ -62,6 +71,7 @@ export function museumDemoSeed(): Participant[] {
       phone: "(555) 201-0101",
       email: "alex@example.com",
       languageIds: ["en"],
+      deliveryMode: "reveal",
     },
     {
       id: randomUUID(),
@@ -69,6 +79,7 @@ export function museumDemoSeed(): Participant[] {
       phone: "(555) 201-0102",
       email: "bailey@example.com",
       languageIds: ["es"],
+      deliveryMode: "send",
     },
     {
       id: randomUUID(),
@@ -76,6 +87,7 @@ export function museumDemoSeed(): Participant[] {
       phone: "(555) 201-0103",
       email: "casey@example.com",
       languageIds: ["en", "es"],
+      deliveryMode: "reveal",
     },
     {
       id: randomUUID(),
@@ -83,6 +95,7 @@ export function museumDemoSeed(): Participant[] {
       phone: "(555) 201-0104",
       email: "drew@example.com",
       languageIds: ["en"],
+      deliveryMode: "send",
     },
   ];
 }

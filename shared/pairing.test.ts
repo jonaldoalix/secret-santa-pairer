@@ -8,6 +8,7 @@ function people(n: number): Participant[] {
     name: `P${i}`,
     phone: `555000${String(i).padStart(4, "0")}`,
     languageIds: ["en"],
+    deliveryMode: "reveal" as const,
   }));
 }
 
