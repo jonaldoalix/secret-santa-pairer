@@ -27,6 +27,7 @@ export const smtpNotifier: Notifier = {
         eventDate: ctx.config.eventDate,
         eventLabel: ctx.config.eventLabel,
         messages: ctx.config.messages,
+        languageIds: assignment.santa.languageIds,
       });
       const to = destinationFor(assignment, "smtp");
 

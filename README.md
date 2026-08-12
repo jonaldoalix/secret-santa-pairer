@@ -7,7 +7,8 @@ Privately shuffle Secret Santa assignments and notify each participant of their 
 - Host flow: add participants (3+) → shuffle → notify
 - Fair pairing for odd or even groups: no self-gifts, no mutual pairs
 - Pluggable notify providers: `stub`, `twilio`, `smtp`, `aws_sns`, `http_sms`
-- Configurable budget, event date/label, and **any-language** message blocks (editable in the host UI)
+- Configurable budget, event date/label, and **any-language** message catalog
+- Per-person language picks: each participant only receives the languages they need
 - Museum mode: stub deliveries only (safe public demo)
 - Responsive UI for phone, tablet, and desktop
 

@@ -8,33 +8,30 @@ describe("buildNotifyBody", () => {
     budget: "$25",
     eventDate: "Dec 24",
     eventLabel: "Secret Santa",
+    messages: DEFAULT_MESSAGES,
   };
 
-  it("joins every language block", () => {
-    const body = buildNotifyBody({ ...base, messages: DEFAULT_MESSAGES });
+  it("joins every language when unrestricted", () => {
+    const body = buildNotifyBody(base);
     expect(body).toContain("Alex");
-    expect(body).toContain("Bailey");
     expect(body).toContain("¡Hola");
   });
 
-  it("supports any custom language set", () => {
+  it("sends only selected languages", () => {
+    const body = buildNotifyBody({ ...base, languageIds: ["es"] });
+    expect(body).toContain("¡Hola");
+    expect(body).not.toContain("Hello");
+  });
+
+  it("supports custom language ids", () => {
     const body = buildNotifyBody({
       ...base,
       messages: [
-        { label: "Português", body: "Olá {santa}! Seu amigo oculto é {recipient}." },
-        { label: "Français", body: "Bonjour {santa}! Ton secret santa est {recipient}." },
+        { id: "pt", label: "Português", body: "Olá {santa}! Amigo: {recipient}." },
+        { id: "fr", label: "Français", body: "Bonjour {santa}! Cible: {recipient}." },
       ],
+      languageIds: ["pt"],
     });
-    expect(body).toBe(
-      "Olá Alex! Seu amigo oculto é Bailey.\n\nBonjour Alex! Ton secret santa est Bailey.",
-    );
-  });
-
-  it("allows a single language only", () => {
-    const body = buildNotifyBody({
-      ...base,
-      messages: [{ label: "Deutsch", body: "Hallo {santa}, dein Partner ist {recipient}." }],
-    });
-    expect(body).toBe("Hallo Alex, dein Partner ist Bailey.");
+    expect(body).toBe("Olá Alex! Amigo: Bailey.");
   });
 });

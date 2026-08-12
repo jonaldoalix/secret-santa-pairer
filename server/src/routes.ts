@@ -17,9 +17,11 @@ const participantBody = z.object({
     .optional()
     .transform((v) => (v && v.length > 0 ? v : undefined))
     .pipe(z.union([z.undefined(), z.string().email()])),
+  languageIds: z.array(z.string().trim().min(1).max(64)).min(1).max(8),
 });
 
 const messageBlock = z.object({
+  id: z.string().trim().min(1).max(64),
   label: z.string().trim().min(1).max(40),
   body: z.string().trim().min(1).max(2000),
 });
@@ -62,10 +64,17 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
       return;
     }
 
+    const ids = parsed.data.messages.map((m) => m.id);
+    if (new Set(ids).size !== ids.length) {
+      res.status(400).json({ error: "Each message language needs a unique id." });
+      return;
+    }
+
     config.giftBudget = parsed.data.giftBudget;
     config.eventDate = parsed.data.eventDate;
     config.eventLabel = parsed.data.eventLabel;
     config.messages = parsed.data.messages.map((m) => ({ ...m }));
+    store.pruneLanguages(new Set(ids));
 
     res.json(publicConfig(config, store));
   });
@@ -81,7 +90,7 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
       return;
     }
 
-    const { name, email } = parsed.data;
+    const { name, email, languageIds } = parsed.data;
     const emailValue = email || undefined;
     const rawPhone = parsed.data.phone?.trim() || "";
     let phoneValue: string | undefined;
@@ -110,8 +119,48 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
       return;
     }
 
-    const participant = store.add({ name, phone: phoneValue, email: emailValue });
+    const known = new Set(config.messages.map((m) => m.id));
+    const selected = [...new Set(languageIds)].filter((id) => known.has(id));
+    if (selected.length === 0) {
+      res.status(400).json({
+        error: "Pick at least one language for this participant.",
+      });
+      return;
+    }
+
+    const participant = store.add({
+      name,
+      phone: phoneValue,
+      email: emailValue,
+      languageIds: selected,
+    });
     res.status(201).json({ participant, participants: store.list() });
+  });
+
+  router.patch("/participants/:id/languages", (req, res) => {
+    const languageIds = z
+      .array(z.string().trim().min(1).max(64))
+      .min(1)
+      .max(8)
+      .safeParse(req.body?.languageIds);
+    if (!languageIds.success) {
+      res.status(400).json({ error: "Pick at least one language." });
+      return;
+    }
+
+    const known = new Set(config.messages.map((m) => m.id));
+    const selected = [...new Set(languageIds.data)].filter((id) => known.has(id));
+    if (selected.length === 0) {
+      res.status(400).json({ error: "Pick at least one valid language." });
+      return;
+    }
+
+    const participant = store.updateLanguages(req.params.id, selected);
+    if (!participant) {
+      res.status(404).json({ error: "Participant not found." });
+      return;
+    }
+    res.json({ participant, participants: store.list() });
   });
 
   router.delete("/participants/:id", (req, res) => {
@@ -140,6 +189,14 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
         res.status(400).json({
           error:
             "Need at least 3 participants before assigning (2 people can only swap with each other).",
+        });
+        return;
+      }
+
+      const missingLang = participants.find((p) => p.languageIds.length === 0);
+      if (missingLang) {
+        res.status(400).json({
+          error: `${missingLang.name} needs at least one notify language.`,
         });
         return;
       }

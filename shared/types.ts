@@ -8,7 +8,8 @@ export type NotifyProviderId =
 export type ContactMode = "phone" | "email" | "either";
 
 export interface MessageBlock {
-  /** Host-facing label only (English, Español, Português, …) — not sent in the message. */
+  id: string;
+  /** Host-facing label (English, Español, …) — not included in the outbound text. */
   label: string;
   body: string;
 }
@@ -18,6 +19,8 @@ export interface Participant {
   name: string;
   phone?: string;
   email?: string;
+  /** Message block ids this person should receive. */
+  languageIds: string[];
 }
 
 export interface Assignment {

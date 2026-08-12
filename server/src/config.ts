@@ -51,7 +51,8 @@ function seedMessages(): MessageBlock[] {
     try {
       const parsed = JSON.parse(fromJson) as MessageBlock[];
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((m) => ({
+        return parsed.map((m, i) => ({
+          id: String(m.id || `msg-${i + 1}`).slice(0, 64),
           label: String(m.label || "Message").slice(0, 40),
           body: String(m.body || ""),
         }));
@@ -65,8 +66,8 @@ function seedMessages(): MessageBlock[] {
   const es = process.env.MESSAGE_TEMPLATE_ES?.trim();
   if (en || es) {
     const blocks: MessageBlock[] = [];
-    if (en) blocks.push({ label: "English", body: en });
-    if (es) blocks.push({ label: "Español", body: es });
+    if (en) blocks.push({ id: "en", label: "English", body: en });
+    if (es) blocks.push({ id: "es", label: "Español", body: es });
     return blocks;
   }
 

@@ -7,6 +7,7 @@ function people(n: number): Participant[] {
     id: String(i),
     name: `P${i}`,
     phone: `555000${String(i).padStart(4, "0")}`,
+    languageIds: ["en"],
   }));
 }
 

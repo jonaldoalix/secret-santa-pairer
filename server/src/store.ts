@@ -18,9 +18,25 @@ export class ParticipantStore {
       name: input.name.trim(),
       phone: input.phone?.trim() || undefined,
       email: input.email?.trim() || undefined,
+      languageIds: [...input.languageIds],
     };
     this.participants.push(participant);
     return participant;
+  }
+
+  updateLanguages(id: string, languageIds: string[]): Participant | null {
+    const participant = this.participants.find((p) => p.id === id);
+    if (!participant) return null;
+    participant.languageIds = [...languageIds];
+    return participant;
+  }
+
+  pruneLanguages(validIds: Set<string>): void {
+    for (const participant of this.participants) {
+      participant.languageIds = participant.languageIds.filter((id) =>
+        validIds.has(id),
+      );
+    }
   }
 
   remove(id: string): boolean {
@@ -33,6 +49,7 @@ export class ParticipantStore {
     this.participants = seed.map((p) => ({
       ...p,
       id: p.id || randomUUID(),
+      languageIds: [...(p.languageIds || [])],
     }));
   }
 }
@@ -44,24 +61,28 @@ export function museumDemoSeed(): Participant[] {
       name: "Alex",
       phone: "(555) 201-0101",
       email: "alex@example.com",
+      languageIds: ["en"],
     },
     {
       id: randomUUID(),
       name: "Bailey",
       phone: "(555) 201-0102",
       email: "bailey@example.com",
+      languageIds: ["es"],
     },
     {
       id: randomUUID(),
       name: "Casey",
       phone: "(555) 201-0103",
       email: "casey@example.com",
+      languageIds: ["en", "es"],
     },
     {
       id: randomUUID(),
       name: "Drew",
       phone: "(555) 201-0104",
       email: "drew@example.com",
+      languageIds: ["en"],
     },
   ];
 }

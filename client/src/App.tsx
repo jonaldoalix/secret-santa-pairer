@@ -34,6 +34,18 @@ function draftFromConfig(cfg: PublicConfig): SettingsDraft {
   };
 }
 
+function newMessageId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function labelsFor(participant: Participant, messages: MessageBlock[]): string {
+  const map = new Map(messages.map((m) => [m.id, m.label]));
+  return participant.languageIds.map((id) => map.get(id) || id).join(", ");
+}
+
 export function App() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [settings, setSettings] = useState<SettingsDraft | null>(null);
@@ -41,13 +53,14 @@ export function App() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [languageIds, setLanguageIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [result, setResult] = useState<AssignResult | null>(null);
 
   const ready = participants.length >= 3;
-  const languageChips = settings?.messages ?? config?.messages ?? [];
+  const availableMessages = settings?.messages ?? config?.messages ?? [];
 
   const contactHint = useMemo(() => {
     if (!config) return "";
@@ -68,6 +81,7 @@ export function App() {
         setConfig(cfg);
         setSettings(draftFromConfig(cfg));
         setParticipants(list.participants);
+        setLanguageIds(cfg.messages.map((m) => m.id));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load app.");
       }
@@ -85,24 +99,35 @@ export function App() {
   function addMessage() {
     if (!settings) return;
     if (settings.messages.length >= 8) return;
+    const id = newMessageId();
     setSettings({
       ...settings,
       messages: [
         ...settings.messages,
         {
+          id,
           label: `Language ${settings.messages.length + 1}`,
           body: "Hello {santa}! Your recipient is {recipient}. Budget {budget}. See you {date}!",
         },
       ],
     });
+    setLanguageIds((prev) => [...prev, id]);
   }
 
   function removeMessage(index: number) {
     if (!settings || settings.messages.length <= 1) return;
-    setSettings({
-      ...settings,
-      messages: settings.messages.filter((_, i) => i !== index),
-    });
+    const removed = settings.messages[index];
+    const messages = settings.messages.filter((_, i) => i !== index);
+    setSettings({ ...settings, messages });
+    if (removed) {
+      setLanguageIds((prev) => prev.filter((id) => id !== removed.id));
+    }
+  }
+
+  function toggleDraftLanguage(id: string) {
+    setLanguageIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   }
 
   async function onSaveSettings(event: FormEvent) {
@@ -118,6 +143,13 @@ export function App() {
       });
       setConfig(cfg);
       setSettings(draftFromConfig(cfg));
+      const valid = new Set(cfg.messages.map((m) => m.id));
+      setLanguageIds((prev) => {
+        const next = prev.filter((id) => valid.has(id));
+        return next.length > 0 ? next : cfg.messages.map((m) => m.id);
+      });
+      const list = await api<{ participants: Participant[] }>("/participants");
+      setParticipants(list.participants);
       setNotice("Event settings saved for this session.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save settings.");
@@ -131,11 +163,15 @@ export function App() {
     setError(null);
     setNotice(null);
     setResult(null);
+    if (languageIds.length === 0) {
+      setError("Pick at least one language for this person.");
+      return;
+    }
     setBusy(true);
     try {
       const data = await api<{ participants: Participant[] }>("/participants", {
         method: "POST",
-        body: JSON.stringify({ name, phone, email }),
+        body: JSON.stringify({ name, phone, email, languageIds }),
       });
       setParticipants(data.participants);
       setName("");
@@ -143,6 +179,32 @@ export function App() {
       setEmail("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add participant.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onToggleParticipantLanguage(participant: Participant, languageId: string) {
+    const next = participant.languageIds.includes(languageId)
+      ? participant.languageIds.filter((id) => id !== languageId)
+      : [...participant.languageIds, languageId];
+    if (next.length === 0) {
+      setError(`${participant.name} needs at least one language.`);
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const data = await api<{ participants: Participant[] }>(
+        `/participants/${participant.id}/languages`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ languageIds: next }),
+        },
+      );
+      setParticipants(data.participants);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update languages.");
     } finally {
       setBusy(false);
     }
@@ -232,8 +294,8 @@ export function App() {
               </span>
               <span className="chip">{settings?.eventDate ?? config?.eventDate}</span>
               <span className="chip">Notify: {config?.notifyProvider}</span>
-              {languageChips.map((m) => (
-                <span className="chip" key={`${m.label}-${m.body.slice(0, 12)}`}>
+              {availableMessages.map((m) => (
+                <span className="chip" key={m.id}>
                   {m.label}
                 </span>
               ))}
@@ -245,8 +307,8 @@ export function App() {
           <section className="panel" aria-labelledby="settings-heading">
             <h2 id="settings-heading">Host controls</h2>
             <p className="panel-intro">
-              Write the notify text in any language(s). Each block is included in the
-              message. Placeholders: <code>{"{santa}"}</code>,{" "}
+              Define the language catalog here. Each participant later picks which of
+              these they should receive. Placeholders: <code>{"{santa}"}</code>,{" "}
               <code>{"{recipient}"}</code>, <code>{"{budget}"}</code>,{" "}
               <code>{"{date}"}</code>, <code>{"{event}"}</code>.
             </p>
@@ -284,7 +346,7 @@ export function App() {
               </label>
 
               {settings.messages.map((message, index) => (
-                <div className="message-block" key={`msg-${index}`}>
+                <div className="message-block" key={message.id}>
                   <label>
                     Language label
                     <input
@@ -330,8 +392,7 @@ export function App() {
               </div>
             </form>
             <p className="template-hint">
-              All language blocks are sent together (blank line between). Labels are for
-              you only. Settings apply to this server session.
+              Participants only get the languages you check for them — nothing else.
             </p>
           </section>
         ) : null}
@@ -377,6 +438,23 @@ export function App() {
                 />
               </label>
             ) : null}
+
+            <fieldset className="lang-fieldset">
+              <legend>Languages to receive</legend>
+              <div className="lang-options">
+                {availableMessages.map((m) => (
+                  <label key={m.id} className="lang-option">
+                    <input
+                      type="checkbox"
+                      checked={languageIds.includes(m.id)}
+                      onChange={() => toggleDraftLanguage(m.id)}
+                    />
+                    <span>{m.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
             <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
               <button className="btn btn-primary" type="submit" disabled={busy}>
                 Drop in the hat
@@ -401,6 +479,22 @@ export function App() {
                   <div className="person">
                     <strong>{p.name}</strong>
                     <span>{[p.phone, p.email].filter(Boolean).join(" · ")}</span>
+                    <span className="lang-summary">
+                      Receives: {labelsFor(p, availableMessages) || "none"}
+                    </span>
+                    <div className="lang-options compact">
+                      {availableMessages.map((m) => (
+                        <label key={`${p.id}-${m.id}`} className="lang-option">
+                          <input
+                            type="checkbox"
+                            checked={p.languageIds.includes(m.id)}
+                            disabled={busy}
+                            onChange={() => void onToggleParticipantLanguage(p, m.id)}
+                          />
+                          <span>{m.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <button
                     className="btn btn-ghost"

@@ -25,6 +25,7 @@ export const awsSnsNotifier: Notifier = {
         eventDate: ctx.config.eventDate,
         eventLabel: ctx.config.eventLabel,
         messages: ctx.config.messages,
+        languageIds: assignment.santa.languageIds,
       });
       const to = destinationFor(assignment, "aws_sns");
 
