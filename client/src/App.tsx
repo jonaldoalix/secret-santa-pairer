@@ -580,91 +580,93 @@ export function App() {
         ) : null}
 
         {!inReveal ? (
-          <section className="panel" aria-labelledby="add-heading">
+          <section className="panel panel-compact" aria-labelledby="add-heading">
             <h2 id="add-heading">Add to the hat</h2>
-            <form className="form-grid two" onSubmit={onAdd}>
-              <label>
-                Name
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Casey"
-                  autoComplete="name"
-                  required
-                />
-              </label>
-              {config?.contactMode !== "email" ? (
+            <form className="add-form" onSubmit={onAdd}>
+              <div className="add-fields">
                 <label>
-                  Phone (10 digits)
+                  Name
                   <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="2813308004"
-                    inputMode="numeric"
-                    autoComplete="tel"
-                    pattern="[\d\s()+-]{10,20}"
-                    title="Enter a 10-digit phone number"
-                    required={config?.contactMode === "phone"}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Casey"
+                    autoComplete="name"
+                    required
                   />
                 </label>
-              ) : null}
-              {config?.contactMode !== "phone" ? (
-                <label>
-                  Email
-                  <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="casey@example.com"
-                    inputMode="email"
-                    autoComplete="email"
-                    required={config?.contactMode === "email"}
-                  />
-                </label>
-              ) : null}
+                {config?.contactMode !== "email" ? (
+                  <label>
+                    Phone
+                    <input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="2813308004"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      pattern="[\d\s()+-]{10,20}"
+                      title="Enter a 10-digit phone number"
+                      required={config?.contactMode === "phone"}
+                    />
+                  </label>
+                ) : null}
+                {config?.contactMode !== "phone" ? (
+                  <label>
+                    Email
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="casey@example.com"
+                      inputMode="email"
+                      autoComplete="email"
+                      required={config?.contactMode === "email"}
+                    />
+                  </label>
+                ) : null}
+              </div>
 
-              <fieldset className="lang-fieldset">
-                <legend>Languages to receive</legend>
-                <div className="lang-options">
-                  {availableMessages.map((m) => (
-                    <label key={m.id} className="lang-option">
+              <div className="add-meta">
+                <div className="add-meta-group" role="group" aria-label="Languages to receive">
+                  <span className="add-meta-label">Languages</span>
+                  <div className="lang-options compact">
+                    {availableMessages.map((m) => (
+                      <label key={m.id} className="lang-option chip-option">
+                        <input
+                          type="checkbox"
+                          checked={languageIds.includes(m.id)}
+                          onChange={() => toggleDraftLanguage(m.id)}
+                        />
+                        <span>{m.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="add-meta-group" role="group" aria-label="How they learn the pairing">
+                  <span className="add-meta-label">Delivery</span>
+                  <div className="lang-options compact">
+                    <label className="lang-option chip-option">
                       <input
-                        type="checkbox"
-                        checked={languageIds.includes(m.id)}
-                        onChange={() => toggleDraftLanguage(m.id)}
+                        type="radio"
+                        name="deliveryMode"
+                        checked={deliveryMode === "reveal"}
+                        onChange={() => setDeliveryMode("reveal")}
                       />
-                      <span>{m.label}</span>
+                      <span>Reveal</span>
                     </label>
-                  ))}
+                    <label className="lang-option chip-option">
+                      <input
+                        type="radio"
+                        name="deliveryMode"
+                        checked={deliveryMode === "send"}
+                        onChange={() => setDeliveryMode("send")}
+                      />
+                      <span>Send</span>
+                    </label>
+                  </div>
                 </div>
-              </fieldset>
 
-              <fieldset className="lang-fieldset">
-                <legend>How they learn the pairing</legend>
-                <div className="lang-options">
-                  <label className="lang-option">
-                    <input
-                      type="radio"
-                      name="deliveryMode"
-                      checked={deliveryMode === "reveal"}
-                      onChange={() => setDeliveryMode("reveal")}
-                    />
-                    <span>Reveal on screen</span>
-                  </label>
-                  <label className="lang-option">
-                    <input
-                      type="radio"
-                      name="deliveryMode"
-                      checked={deliveryMode === "send"}
-                      onChange={() => setDeliveryMode("send")}
-                    />
-                    <span>Send message</span>
-                  </label>
-                </div>
-              </fieldset>
-
-              <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
-                <button className="btn btn-primary" type="submit" disabled={busy}>
-                  Drop in the hat
+                <button className="btn btn-primary add-submit" type="submit" disabled={busy}>
+                  Add
                 </button>
               </div>
             </form>
