@@ -203,52 +203,6 @@ export function App() {
     }
   }
 
-  async function onSetDeliveryMode(participant: Participant, mode: DeliveryMode) {
-    if (participant.deliveryMode === mode) return;
-    setError(null);
-    setBusy(true);
-    try {
-      const data = await api<{ participants: Participant[] }>(
-        `/participants/${participant.id}/delivery`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ deliveryMode: mode }),
-        },
-      );
-      setParticipants(data.participants);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update delivery mode.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onToggleParticipantLanguage(participant: Participant, languageId: string) {
-    const next = participant.languageIds.includes(languageId)
-      ? participant.languageIds.filter((id) => id !== languageId)
-      : [...participant.languageIds, languageId];
-    if (next.length === 0) {
-      setError(`${participant.name} needs at least one language.`);
-      return;
-    }
-    setError(null);
-    setBusy(true);
-    try {
-      const data = await api<{ participants: Participant[] }>(
-        `/participants/${participant.id}/languages`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ languageIds: next }),
-        },
-      );
-      setParticipants(data.participants);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update languages.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function onRemove(id: string) {
     setError(null);
     setNotice(null);
@@ -723,41 +677,6 @@ export function App() {
                         Receives: {labelsFor(p, availableMessages) || "none"} ·{" "}
                         {p.deliveryMode === "send" ? "Send" : "Reveal"}
                       </span>
-                      <div className="lang-options compact">
-                        {availableMessages.map((m) => (
-                          <label key={`${p.id}-${m.id}`} className="lang-option">
-                            <input
-                              type="checkbox"
-                              checked={p.languageIds.includes(m.id)}
-                              disabled={busy}
-                              onChange={() => void onToggleParticipantLanguage(p, m.id)}
-                            />
-                            <span>{m.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <div className="lang-options compact">
-                        <label className="lang-option">
-                          <input
-                            type="radio"
-                            name={`delivery-${p.id}`}
-                            checked={p.deliveryMode === "reveal"}
-                            disabled={busy}
-                            onChange={() => void onSetDeliveryMode(p, "reveal")}
-                          />
-                          <span>Reveal</span>
-                        </label>
-                        <label className="lang-option">
-                          <input
-                            type="radio"
-                            name={`delivery-${p.id}`}
-                            checked={p.deliveryMode === "send"}
-                            disabled={busy}
-                            onChange={() => void onSetDeliveryMode(p, "send")}
-                          />
-                          <span>Send</span>
-                        </label>
-                      </div>
                     </div>
                     <button
                       className="btn btn-ghost"
