@@ -386,12 +386,10 @@ export function App() {
     <>
       {config?.museumMode ? (
         <div className="museum-banner" role="status">
-          <div className="museum-banner-copy">
-            <strong>Museum demo</strong>
-            <span>
-              No real SMS or email is sent. Deliveries are stubbed for evaluation only.
-            </span>
-          </div>
+          <strong>Museum demo</strong>
+          <p className="museum-banner-note">
+            No real SMS or email is sent. Deliveries are stubbed for evaluation only.
+          </p>
           <button
             type="button"
             className="museum-banner-action"

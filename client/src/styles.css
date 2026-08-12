@@ -17,7 +17,7 @@
   --font-display: "Bricolage Grotesque", Georgia, serif;
   --font-body: "Literata", Georgia, serif;
   --space: clamp(1rem, 3.2vw, 1.85rem);
-  --max: 46rem;
+  --max: 52rem;
 }
 
 *,
@@ -81,50 +81,71 @@ body::after {
   position: sticky;
   top: 0;
   z-index: 20;
-  display: flex;
-  gap: 0.75rem 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title action"
+    "note note";
+  gap: 0.3rem 0.85rem;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  padding: 0.8rem var(--space);
-  padding-top: max(0.8rem, env(safe-area-inset-top));
+  padding: 0.65rem var(--space);
+  padding-top: max(0.65rem, env(safe-area-inset-top));
   background: linear-gradient(90deg, #7a1f28, #a32028 55%, #8a1a22);
   color: #fff4f0;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   line-height: 1.35;
   border-bottom: 3px solid var(--gold);
 }
 
-.museum-banner-copy {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  flex: 1 1 16rem;
-}
-
 .museum-banner strong {
+  grid-area: title;
   font-family: var(--font-display);
   font-weight: 800;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.museum-banner-note {
+  grid-area: note;
+  margin: 0;
+  color: rgba(255, 244, 240, 0.92);
+  font-size: 0.86rem;
+  line-height: 1.35;
 }
 
 .museum-banner-action {
-  flex: 0 0 auto;
-  min-height: 2.1rem;
-  padding: 0.35rem 0.85rem;
+  grid-area: action;
+  justify-self: end;
+  min-height: 2rem;
+  padding: 0.3rem 0.8rem;
   border: 1px solid rgba(255, 244, 240, 0.55);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   color: #fff4f0;
   font-family: var(--font-display);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .museum-banner-action:hover,
 .museum-banner-action:focus-visible {
   background: rgba(255, 255, 255, 0.22);
   outline: none;
+}
+
+@media (min-width: 720px) {
+  .museum-banner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "title note action";
+    gap: 0.75rem 1.1rem;
+    padding-block: 0.7rem;
+  }
+
+  .museum-banner-note {
+    font-size: 0.9rem;
+  }
 }
 
 .shell {
