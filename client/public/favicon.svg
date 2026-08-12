@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Crossed candy canes">
+  <defs>
+    <path
+      id="cane"
+      d="M 10 -22 A 12 12 0 1 1 -10 -22 L -10 28"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </defs>
+  <!-- Left cane (\) -->
+  <g transform="translate(32 34) rotate(-38)">
+    <use href="#cane" stroke="#fff6ec" stroke-width="11" />
+    <use href="#cane" stroke="#b4232e" stroke-width="11" stroke-dasharray="6.5 6" />
+  </g>
+  <!-- Right cane (/) -->
+  <g transform="translate(32 34) rotate(38) scale(-1,1)">
+    <use href="#cane" stroke="#fff6ec" stroke-width="11" />
+    <use href="#cane" stroke="#b4232e" stroke-width="11" stroke-dasharray="6.5 6" />
+  </g>
+</svg>

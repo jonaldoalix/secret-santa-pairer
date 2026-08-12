@@ -1,0 +1,6 @@
+# Lab overlay for fsb-03 museum publish (Tailscale bind on :8100).
+# Usage: docker compose -f compose.yaml -f compose.fsb.yaml up -d --build
+services:
+  secret-santa-pairer:
+    ports:
+      - "100.64.0.7:8100:3024"

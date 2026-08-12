@@ -2,6 +2,9 @@
 
 Privately shuffle Secret Santa assignments and notify each participant of their recipient - built for families and groups that cannot draw names in person.
 
+**Live museum demo:** [santa.fullstackboston.com](https://santa.fullstackboston.com)  
+**License:** MIT
+
 ## Features
 
 - Host flow: add participants (3+) -> Start Pairing (send + on-screen reveal in one step)
@@ -11,6 +14,7 @@ Privately shuffle Secret Santa assignments and notify each participant of their 
 - Configurable budget, event date/label, and **any-language** message catalog
 - Per-person language picks: each participant only receives the languages they need
 - Pluggable notify providers: `stub`, `twilio`, `smtp`, `aws_sns`, `http_sms`
+- Installable PWA with offline shell caching (API always network-only)
 - Museum mode: stub deliveries only (safe public demo)
 - Responsive UI for phone, tablet, and desktop
 
@@ -32,9 +36,22 @@ npm run build
 npm start
 ```
 
+Docker (museum-style stub demo on port 3024):
+
+```bash
+cp example.env .env
+docker compose up -d --build
+```
+
+## Security model
+
+The API is **unauthenticated** and meant for a **trusted host** (you, on your device or LAN). Anyone who can reach the server can read the roster and trigger pairing/notify. Put real SMS/email instances behind a VPN or reverse-proxy auth. See [SECURITY.md](./SECURITY.md).
+
+`MUSEUM_MODE=true` always forces `NOTIFY_PROVIDER=stub`, even if `.env` says otherwise.
+
 ## Notify providers
 
-Set `NOTIFY_PROVIDER` in `.env`:
+Set `NOTIFY_PROVIDER` in `.env` (see `example.env` for credential names):
 
 | Value | Contact field | Notes |
 |-------|---------------|-------|
@@ -52,6 +69,8 @@ NOTIFY_PROVIDER=stub
 SEED_MUSEUM_DEMO=true
 ```
 
+In the UI, open **How to run this** / **Send for real** for the same recipes without leaving the page.
+
 ## Scripts
 
 | Script | Purpose |
@@ -61,6 +80,10 @@ SEED_MUSEUM_DEMO=true
 | `npm run lint` | Typecheck |
 | `npm run build` | Client + server build |
 | `npm start` | Serve built app |
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Please report vulnerabilities privately per [SECURITY.md](./SECURITY.md).
 
 ## Why
 

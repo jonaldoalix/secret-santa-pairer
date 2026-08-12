@@ -11,5 +11,4 @@ services:
       NOTIFY_PROVIDER: "stub"
       SEED_MUSEUM_DEMO: "true"
     ports:
-      # fsb-03 Tailscale bind — see Nathan docs/PORTS.md
-      - "100.64.0.7:8100:3024"
+      - "3024:3024"

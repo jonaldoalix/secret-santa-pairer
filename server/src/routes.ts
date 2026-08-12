@@ -254,9 +254,7 @@ export function createApiRouter(
       res.json(result);
     } catch (error) {
       console.error("assign failed", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Assignment failed.",
-      });
+      res.status(500).json({ error: "Assignment failed." });
     }
   });
 
@@ -305,15 +303,18 @@ export function createApiRouter(
           .length,
         failed: deliveries.filter((d) => d.status === "failed").length,
         museumMode: config.museumMode,
-        deliveries: config.museumMode
-          ? deliveries
-          : deliveries.map((d) => ({ ...d, body: "[redacted]" })),
+        deliveries: deliveries.map((d) => ({
+          santaName: d.santaName,
+          status: d.status,
+          channel: d.channel,
+          // Never echo message bodies or destinations to the browser.
+          to: "[redacted]",
+          body: "[redacted]",
+        })),
       });
     } catch (error) {
       console.error("notify failed", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Notify failed.",
-      });
+      res.status(500).json({ error: "Notify failed." });
     }
   });
 

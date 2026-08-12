@@ -114,9 +114,9 @@ export interface AppConfig {
 
 export function loadConfig(): AppConfig {
   const museumMode = boolEnv(process.env.MUSEUM_MODE, false);
-  const notifyProvider = providerSchema.parse(
-    process.env.NOTIFY_PROVIDER || (museumMode ? "stub" : "stub"),
-  );
+  const requested = providerSchema.parse(process.env.NOTIFY_PROVIDER || "stub");
+  // Public demos must never accidentally wire a live provider.
+  const notifyProvider: NotifyProviderId = museumMode ? "stub" : requested;
 
   return {
     port: Number(process.env.PORT || 3024),

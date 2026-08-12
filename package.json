@@ -16,8 +16,16 @@
     "test:watch": "vitest",
     "lint": "tsc -p server/tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit"
   },
-  "author": "Full Stack Boston",
+  "author": "Full Stack Boston / Jonaldo Alix",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonaldoalix/secret-santa-pairer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jonaldoalix/secret-santa-pairer/issues"
+  },
+  "homepage": "https://santa.fullstackboston.com",
   "engines": {
     "node": ">=20"
   },
@@ -42,6 +50,7 @@
     "tsx": "^4.20.3",
     "typescript": "^5.9.2",
     "vite": "^7.0.6",
+    "vite-plugin-pwa": "^1.3.0",
     "vitest": "^3.2.4"
   }
 }
