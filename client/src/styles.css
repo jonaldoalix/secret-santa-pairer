@@ -217,7 +217,6 @@ body::after {
 
 .lede {
   margin: 0.85rem 0 0;
-  max-width: 34rem;
   color: var(--muted);
   font-size: clamp(1.02rem, 2.7vw, 1.16rem);
   line-height: 1.45;
