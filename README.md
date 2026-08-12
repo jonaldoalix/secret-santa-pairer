@@ -1,19 +1,64 @@
-The project can be run once you modify the example.env file to contain the Twilio account credentials and rename it to just .env.
+# Secret Santa Pairer
 
-Start the node app through index.js.  
+Privately shuffle Secret Santa assignments and notify each participant of their recipient — built for families and groups that cannot draw names in person.
 
-The project currently has no CSS styling but is fully functional.
+## Features
 
-The app is intended to function in the following way:
+- Host flow: add participants → require an even count → shuffle → notify
+- Fair pairing: no self-gifts, no mutual pairs
+- Pluggable notify providers: `stub`, `twilio`, `smtp`, `aws_sns`, `http_sms`
+- Configurable budget, event date/label, locale (`en` / `es` / `bilingual`), and message templates
+- Museum mode: stub deliveries only (safe public demo)
+- Responsive UI for phone, tablet, and desktop
 
-1. A Host collects an even amount of participant data including name and number.
-2. They then enter each participant's data into the app.
-3. When all participants have been included, the app will take all the data and randomize the entries.
-4. Upon conclusion of the randomization, the app will pair participants together.
-5. Lastly, each participant is sent via SMS (using the Twilio account you configured in the .env file) their recipient data.
+## Quick start
 
-I built this project because my family wanted to do this event but could not get together before the holidays to do the selection process.  This app lets us plug in the participant's info that we had (or could collect remotely), and then without even I knowing, shuffle it all up (like we would in a 'papers in a hat' situation) and give everyone a selection that only they know about right on the spot.
+```bash
+cp example.env .env
+npm install
+npm run dev
+```
 
-If this helps, enjoy!
+- API: `http://127.0.0.1:3024`
+- UI (Vite): `http://127.0.0.1:5173` (proxies `/api`)
 
-PLEASE NOTE: My family has English and Spanish speakers so the message in the SMS body declared in the server function is bilingual.  Additionally, the current budget found in the message for presents is set to $25.  You may wish to modify that function as needed.
+Production:
+
+```bash
+npm run build
+npm start
+```
+
+## Notify providers
+
+Set `NOTIFY_PROVIDER` in `.env`:
+
+| Value | Contact field | Notes |
+|-------|---------------|-------|
+| `stub` | phone or email | Logs/previews only — museum default |
+| `twilio` | phone | Classic SMS path |
+| `smtp` | email | Nodemailer |
+| `aws_sns` | phone | AWS SNS Publish |
+| `http_sms` | phone | POST JSON to `HTTP_SMS_URL` (generic SMS gateway template) |
+
+Museum / public eval:
+
+```env
+MUSEUM_MODE=true
+NOTIFY_PROVIDER=stub
+SEED_MUSEUM_DEMO=true
+```
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | API + Vite client |
+| `npm test` | Unit tests (pairing + messages) |
+| `npm run lint` | Typecheck |
+| `npm run build` | Client + server build |
+| `npm start` | Serve built app |
+
+## Why
+
+Built so a bilingual family could run Secret Santa remotely without the host learning the assignments — papers in a hat, over a private message.

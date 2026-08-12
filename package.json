@@ -1,19 +1,47 @@
 {
-  "name": "secretsanta",
-  "version": "1.0.0",
-  "description": "An application to collect secret santa participant info and make assignments annonymously",
-  "main": "index.js",
+  "name": "secret-santa-pairer",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Collect Secret Santa participants and privately notify each person of their recipient",
+  "type": "module",
   "scripts": {
-    "start": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently -k -n server,client -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch server/src/index.ts",
+    "dev:client": "vite --config client/vite.config.ts",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build --config client/vite.config.ts",
+    "build:server": "tsc -p server/tsconfig.json",
+    "start": "node dist/server/src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc -p server/tsconfig.json --noEmit && tsc -p client/tsconfig.json --noEmit"
   },
   "author": "Full Stack Boston",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "ejs": "^3.1.10",
-    "express": "^4.18.2",
-    "nodemon": "^3.0.2",
-    "twilio": "^4.19.3"
+    "@aws-sdk/client-sns": "^3.848.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "twilio": "^5.8.0",
+    "zod": "^4.0.14"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "vite": "^7.0.6",
+    "vitest": "^3.2.4"
   }
 }
