@@ -6,6 +6,7 @@ import type { AssignResult, PublicConfig } from "../../shared/types.js";
 import type { AppConfig } from "./config.js";
 import { assertProviderReady } from "./config.js";
 import { getNotifier } from "./notify/index.js";
+import type { RevealSession } from "./reveal.js";
 import { museumDemoSeed, type ParticipantStore } from "./store.js";
 
 const participantBody = z.object({
@@ -46,7 +47,11 @@ function publicConfig(config: AppConfig, store: ParticipantStore): PublicConfig 
   };
 }
 
-export function createApiRouter(config: AppConfig, store: ParticipantStore): Router {
+export function createApiRouter(
+  config: AppConfig,
+  store: ParticipantStore,
+  reveal: RevealSession,
+): Router {
   const router = Router();
 
   router.get("/health", (_req, res) => {
@@ -173,6 +178,7 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
   });
 
   router.post("/reset", (_req, res) => {
+    reveal.clear();
     if (config.seedMuseumDemo) {
       store.reset(museumDemoSeed());
     } else {
@@ -181,9 +187,8 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
     res.json({ participants: store.list() });
   });
 
-  router.post("/assign", async (_req, res) => {
+  router.post("/assign", (_req, res) => {
     try {
-      assertProviderReady(config);
       const participants = store.list();
       if (participants.length < 3) {
         res.status(400).json({
@@ -202,27 +207,75 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
       }
 
       const assignments = assignSecretSantas(participants);
-      const notifier = getNotifier(config.notifyProvider);
-      const deliveries = await notifier.sendAll({ config, assignments });
+      reveal.start(assignments);
 
       const result: AssignResult = {
         assignmentCount: assignments.length,
-        deliveries: deliveries.map((d) =>
-          config.museumMode
-            ? d
-            : {
-                ...d,
-                body: "[redacted]",
-              },
-        ),
+        revealReady: true,
         museumMode: config.museumMode,
       };
-
       res.json(result);
     } catch (error) {
       console.error("assign failed", error);
       res.status(500).json({
         error: error instanceof Error ? error.message : "Assignment failed.",
+      });
+    }
+  });
+
+  router.get("/reveal", (_req, res) => {
+    res.json(reveal.status());
+  });
+
+  router.post("/reveal/peek", (_req, res) => {
+    const peek = reveal.peek();
+    if (!peek) {
+      res.status(400).json({ error: "No active reveal for a player right now." });
+      return;
+    }
+    res.json(peek);
+  });
+
+  router.post("/reveal/confirm", (_req, res) => {
+    const status = reveal.status();
+    if (!status.active || status.complete || !status.santaName) {
+      res.status(400).json({ error: "No player waiting to confirm." });
+      return;
+    }
+    res.json(reveal.confirm());
+  });
+
+  router.post("/reveal/cancel", (_req, res) => {
+    reveal.clear();
+    res.json(reveal.status());
+  });
+
+  router.post("/notify", async (_req, res) => {
+    try {
+      assertProviderReady(config);
+      const assignments = reveal.getAssignments();
+      if (assignments.length === 0) {
+        res.status(400).json({
+          error: "Shake the hat first so there are pairings to notify.",
+        });
+        return;
+      }
+
+      const notifier = getNotifier(config.notifyProvider);
+      const deliveries = await notifier.sendAll({ config, assignments });
+      res.json({
+        sent: deliveries.filter((d) => d.status === "sent" || d.status === "stubbed")
+          .length,
+        failed: deliveries.filter((d) => d.status === "failed").length,
+        museumMode: config.museumMode,
+        deliveries: config.museumMode
+          ? deliveries
+          : deliveries.map((d) => ({ ...d, body: "[redacted]" })),
+      });
+    } catch (error) {
+      console.error("notify failed", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Notify failed.",
       });
     }
   });

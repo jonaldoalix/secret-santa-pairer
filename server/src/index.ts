@@ -3,10 +3,12 @@ import path from "node:path";
 import express from "express";
 import { loadConfig } from "./config.js";
 import { createApiRouter } from "./routes.js";
+import { RevealSession } from "./reveal.js";
 import { museumDemoSeed, ParticipantStore } from "./store.js";
 
 const config = loadConfig();
 const store = new ParticipantStore();
+const reveal = new RevealSession();
 
 if (config.seedMuseumDemo) {
   store.reset(museumDemoSeed());
@@ -16,7 +18,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "64kb" }));
 
-app.use("/api", createApiRouter(config, store));
+app.use("/api", createApiRouter(config, store, reveal));
 
 const clientDist = config.clientDist;
 if (fs.existsSync(clientDist)) {

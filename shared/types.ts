@@ -9,7 +9,7 @@ export type ContactMode = "phone" | "email" | "either";
 
 export interface MessageBlock {
   id: string;
-  /** Host-facing label (English, Español, …) — not included in the outbound text. */
+  /** Host-facing label (English, Espanol, ...) - not included in the outbound text. */
   label: string;
   body: string;
 }
@@ -58,6 +58,19 @@ export interface EditableConfig {
 
 export interface AssignResult {
   assignmentCount: number;
-  deliveries: DeliveryRecord[];
+  revealReady: boolean;
   museumMode: boolean;
+}
+
+export interface RevealStatus {
+  active: boolean;
+  complete: boolean;
+  index: number;
+  total: number;
+  santaName: string | null;
+  santaId: string | null;
+}
+
+export interface RevealPeek {
+  recipientName: string;
 }

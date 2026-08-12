@@ -1,14 +1,15 @@
 # Secret Santa Pairer
 
-Privately shuffle Secret Santa assignments and notify each participant of their recipient — built for families and groups that cannot draw names in person.
+Privately shuffle Secret Santa assignments and notify each participant of their recipient - built for families and groups that cannot draw names in person.
 
 ## Features
 
-- Host flow: add participants (3+) → shuffle → notify
+- Host flow: add participants (3+) -> private on-screen reveal and/or remote notify
 - Fair pairing for odd or even groups: no self-gifts, no mutual pairs
-- Pluggable notify providers: `stub`, `twilio`, `smtp`, `aws_sns`, `http_sms`
+- One-at-a-time press-and-hold reveal so only the called player sees their recipient
 - Configurable budget, event date/label, and **any-language** message catalog
 - Per-person language picks: each participant only receives the languages they need
+- Pluggable notify providers: `stub`, `twilio`, `smtp`, `aws_sns`, `http_sms`
 - Museum mode: stub deliveries only (safe public demo)
 - Responsive UI for phone, tablet, and desktop
 
@@ -36,7 +37,7 @@ Set `NOTIFY_PROVIDER` in `.env`:
 
 | Value | Contact field | Notes |
 |-------|---------------|-------|
-| `stub` | phone or email | Logs/previews only — museum default |
+| `stub` | phone or email | Logs/previews only - museum default |
 | `twilio` | phone | Classic SMS path |
 | `smtp` | email | Nodemailer |
 | `aws_sns` | phone | AWS SNS Publish |
@@ -62,4 +63,4 @@ SEED_MUSEUM_DEMO=true
 
 ## Why
 
-Built so a bilingual family could run Secret Santa remotely without the host learning the assignments — papers in a hat, over a private message.
+Built so a bilingual family could run Secret Santa remotely without the host learning the assignments - papers in a hat, over a private message.

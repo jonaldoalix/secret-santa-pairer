@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AssignResult,
   MessageBlock,
   Participant,
   PublicConfig,
+  RevealPeek,
+  RevealStatus,
 } from "../../shared/types";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -57,10 +59,15 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [result, setResult] = useState<AssignResult | null>(null);
+  const [assignResult, setAssignResult] = useState<AssignResult | null>(null);
+  const [reveal, setReveal] = useState<RevealStatus | null>(null);
+  const [peekName, setPeekName] = useState<string | null>(null);
+  const holdingRef = useRef(false);
 
   const ready = participants.length >= 3;
   const availableMessages = settings?.messages ?? config?.messages ?? [];
+  const inReveal = Boolean(reveal?.active && !reveal.complete);
+  const revealDone = Boolean(reveal?.active && reveal.complete);
 
   const contactHint = useMemo(() => {
     if (!config) return "";
@@ -74,14 +81,16 @@ export function App() {
   useEffect(() => {
     void (async () => {
       try {
-        const [cfg, list] = await Promise.all([
+        const [cfg, list, revealStatus] = await Promise.all([
           api<PublicConfig>("/config"),
           api<{ participants: Participant[] }>("/participants"),
+          api<RevealStatus>("/reveal"),
         ]);
         setConfig(cfg);
         setSettings(draftFromConfig(cfg));
         setParticipants(list.participants);
         setLanguageIds(cfg.messages.map((m) => m.id));
+        setReveal(revealStatus.active ? revealStatus : null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load app.");
       }
@@ -162,7 +171,7 @@ export function App() {
     event.preventDefault();
     setError(null);
     setNotice(null);
-    setResult(null);
+    setAssignResult(null);
     if (languageIds.length === 0) {
       setError("Pick at least one language for this person.");
       return;
@@ -213,7 +222,7 @@ export function App() {
   async function onRemove(id: string) {
     setError(null);
     setNotice(null);
-    setResult(null);
+    setAssignResult(null);
     setBusy(true);
     try {
       const data = await api<{ participants: Participant[] }>(`/participants/${id}`, {
@@ -230,7 +239,9 @@ export function App() {
   async function onReset() {
     setError(null);
     setNotice(null);
-    setResult(null);
+    setAssignResult(null);
+    setReveal(null);
+    setPeekName(null);
     setBusy(true);
     try {
       const data = await api<{ participants: Participant[] }>("/reset", { method: "POST" });
@@ -244,24 +255,84 @@ export function App() {
 
   async function onAssign() {
     if (!ready) {
-      setError("Add at least 3 participants before notifying.");
+      setError("Add at least 3 participants before shuffling.");
       return;
     }
     const confirmed = window.confirm(
-      config?.museumMode
-        ? "Shuffle and preview stub notifications for everyone?"
-        : "Shuffle and send private notifications to every participant now?",
+      "Shuffle pairings and start the private reveal line? Nobody else should see the screen except the person being called.",
     );
     if (!confirmed) return;
 
     setError(null);
     setNotice(null);
+    setPeekName(null);
     setBusy(true);
     try {
       const data = await api<AssignResult>("/assign", { method: "POST" });
-      setResult(data);
+      setAssignResult(data);
+      const status = await api<RevealStatus>("/reveal");
+      setReveal(status);
+      setNotice("Hat shaken. Call the first person to the screen.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Assignment failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startPeek(event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    holdingRef.current = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setError(null);
+    try {
+      const data = await api<RevealPeek>("/reveal/peek", { method: "POST" });
+      if (holdingRef.current) setPeekName(data.recipientName);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reveal pairing.");
+      setPeekName(null);
+    }
+  }
+
+  function endPeek() {
+    holdingRef.current = false;
+    setPeekName(null);
+  }
+
+  async function onConfirmMemorized() {
+    setError(null);
+    setPeekName(null);
+    setBusy(true);
+    try {
+      const status = await api<RevealStatus>("/reveal/confirm", { method: "POST" });
+      setReveal(status);
+      if (status.complete) {
+        setNotice("Everyone has seen their pairing. You can still send remote notifications if needed.");
+      } else {
+        setNotice(`Thanks. Please step away so ${status.santaName} can come up.`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not advance reveal.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onNotify() {
+    setError(null);
+    setBusy(true);
+    try {
+      const data = await api<{ sent: number; failed: number; museumMode: boolean }>(
+        "/notify",
+        { method: "POST" },
+      );
+      setNotice(
+        data.museumMode
+          ? `Stubbed ${data.sent} deliveries (museum mode, no real messages).`
+          : `Sent ${data.sent} notifications${data.failed ? `, ${data.failed} failed` : ""}.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Notify failed.");
     } finally {
       setBusy(false);
     }
@@ -283,8 +354,8 @@ export function App() {
           <p className="kicker">Papers in a hat · privately</p>
           <h1 className="brand">Secret Santa Pairer</h1>
           <p className="lede">
-            Drop in the crew, give the hat a shake, and send each person their recipient
-            without anyone — including you — spoiling the surprise.
+            Drop in the crew, give the hat a shake, and let each person privately learn
+            their recipient without anyone else (including the host) reading it aloud.
           </p>
           {config || settings ? (
             <div className="meta" aria-label="Event settings">
@@ -303,7 +374,81 @@ export function App() {
           ) : null}
         </header>
 
-        {settings ? (
+        {(inReveal || revealDone) && reveal ? (
+          <section className="panel reveal-panel" aria-labelledby="reveal-heading">
+            <h2 id="reveal-heading">Private reveal</h2>
+            {revealDone ? (
+              <>
+                <p className="reveal-call">All set. Everyone has seen their pairing.</p>
+                <p className="panel-intro">
+                  Optional: send the same results remotely with your notify provider.
+                </p>
+                <div className="actions">
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onNotify()}
+                  >
+                    {config?.museumMode ? "Stub notify log" : "Send notifications"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="reveal-progress">
+                  Player {reveal.index + 1} of {reveal.total}
+                </p>
+                <p className="reveal-call">
+                  {reveal.santaName}, come to the screen.
+                </p>
+                <p className="panel-intro">
+                  Everyone else look away. Press and hold Reveal to see your pairing.
+                  Let go to hide it. When you have it memorized, tap the next button.
+                </p>
+
+                <div className="reveal-stage" aria-live="polite">
+                  {peekName ? (
+                    <p className="reveal-result">
+                      You are shopping for
+                      <strong> {peekName}</strong>
+                    </p>
+                  ) : (
+                    <p className="reveal-hidden">Pairing hidden</p>
+                  )}
+                </div>
+
+                <div className="actions">
+                  <button
+                    className="btn btn-primary reveal-hold"
+                    type="button"
+                    disabled={busy}
+                    onPointerDown={(e) => void startPeek(e)}
+                    onPointerUp={endPeek}
+                    onPointerCancel={endPeek}
+                    onLostPointerCapture={endPeek}
+                  >
+                    Hold to reveal
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={busy || Boolean(peekName)}
+                    onClick={() => void onConfirmMemorized()}
+                  >
+                    I memorized it. Next person
+                  </button>
+                </div>
+                <p className="hint">
+                  Tip: release Reveal before tapping next, so the next person cannot
+                  glance at your answer.
+                </p>
+              </>
+            )}
+          </section>
+        ) : null}
+
+        {settings && !inReveal ? (
           <section className="panel" aria-labelledby="settings-heading">
             <h2 id="settings-heading">Host controls</h2>
             <p className="panel-intro">
@@ -392,176 +537,164 @@ export function App() {
               </div>
             </form>
             <p className="template-hint">
-              Participants only get the languages you check for them — nothing else.
+              Participants only get the languages you check for them, nothing else.
             </p>
           </section>
         ) : null}
 
-        <section className="panel" aria-labelledby="add-heading">
-          <h2 id="add-heading">Add to the hat</h2>
-          <form className="form-grid two" onSubmit={onAdd}>
-            <label>
-              Name
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Casey"
-                autoComplete="name"
-                required
-              />
-            </label>
-            {config?.contactMode !== "email" ? (
+        {!inReveal ? (
+          <section className="panel" aria-labelledby="add-heading">
+            <h2 id="add-heading">Add to the hat</h2>
+            <form className="form-grid two" onSubmit={onAdd}>
               <label>
-                Phone (10 digits)
+                Name
                 <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="2813308004"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  pattern="[\d\s()+-]{10,20}"
-                  title="Enter a 10-digit phone number"
-                  required={config?.contactMode === "phone"}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Casey"
+                  autoComplete="name"
+                  required
                 />
               </label>
-            ) : null}
-            {config?.contactMode !== "phone" ? (
-              <label>
-                Email
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="casey@example.com"
-                  inputMode="email"
-                  autoComplete="email"
-                  required={config?.contactMode === "email"}
-                />
-              </label>
-            ) : null}
+              {config?.contactMode !== "email" ? (
+                <label>
+                  Phone (10 digits)
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="2813308004"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    pattern="[\d\s()+-]{10,20}"
+                    title="Enter a 10-digit phone number"
+                    required={config?.contactMode === "phone"}
+                  />
+                </label>
+              ) : null}
+              {config?.contactMode !== "phone" ? (
+                <label>
+                  Email
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="casey@example.com"
+                    inputMode="email"
+                    autoComplete="email"
+                    required={config?.contactMode === "email"}
+                  />
+                </label>
+              ) : null}
 
-            <fieldset className="lang-fieldset">
-              <legend>Languages to receive</legend>
-              <div className="lang-options">
-                {availableMessages.map((m) => (
-                  <label key={m.id} className="lang-option">
-                    <input
-                      type="checkbox"
-                      checked={languageIds.includes(m.id)}
-                      onChange={() => toggleDraftLanguage(m.id)}
-                    />
-                    <span>{m.label}</span>
-                  </label>
-                ))}
+              <fieldset className="lang-fieldset">
+                <legend>Languages to receive</legend>
+                <div className="lang-options">
+                  {availableMessages.map((m) => (
+                    <label key={m.id} className="lang-option">
+                      <input
+                        type="checkbox"
+                        checked={languageIds.includes(m.id)}
+                        onChange={() => toggleDraftLanguage(m.id)}
+                      />
+                      <span>{m.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
+                <button className="btn btn-primary" type="submit" disabled={busy}>
+                  Drop in the hat
+                </button>
               </div>
-            </fieldset>
+            </form>
+            <p className="hint">{contactHint}</p>
+          </section>
+        ) : null}
 
-            <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
-              <button className="btn btn-primary" type="submit" disabled={busy}>
-                Drop in the hat
+        {!inReveal ? (
+          <section className="panel" aria-labelledby="list-heading">
+            <h2 id="list-heading">
+              In the hat ({participants.length})
+              {!ready && participants.length > 0 ? " - need at least 3" : ""}
+            </h2>
+
+            {participants.length === 0 ? (
+              <p className="empty">Empty hat. Add at least 3 people to begin.</p>
+            ) : (
+              <ul className="list">
+                {participants.map((p) => (
+                  <li key={p.id}>
+                    <div className="person">
+                      <strong>{p.name}</strong>
+                      <span>{[p.phone, p.email].filter(Boolean).join(" · ")}</span>
+                      <span className="lang-summary">
+                        Receives: {labelsFor(p, availableMessages) || "none"}
+                      </span>
+                      <div className="lang-options compact">
+                        {availableMessages.map((m) => (
+                          <label key={`${p.id}-${m.id}`} className="lang-option">
+                            <input
+                              type="checkbox"
+                              checked={p.languageIds.includes(m.id)}
+                              disabled={busy}
+                              onChange={() => void onToggleParticipantLanguage(p, m.id)}
+                            />
+                            <span>{m.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-ghost"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void onRemove(p.id)}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="actions">
+              <button
+                className="btn btn-primary"
+                type="button"
+                disabled={busy || !ready || revealDone}
+                onClick={() => void onAssign()}
+              >
+                Shake hat and start reveal
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                disabled={busy}
+                onClick={() => void onReset()}
+              >
+                {config?.museumMode ? "Reset demo roster" : "Empty the hat"}
               </button>
             </div>
-          </form>
-          <p className="hint">{contactHint}</p>
-        </section>
 
-        <section className="panel" aria-labelledby="list-heading">
-          <h2 id="list-heading">
-            In the hat ({participants.length})
-            {!ready && participants.length > 0 ? " — need at least 3" : ""}
-          </h2>
+            {assignResult && !reveal?.active ? (
+              <p className="status ok" role="status">
+                Paired {assignResult.assignmentCount} people. Start reveal to continue.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
-          {participants.length === 0 ? (
-            <p className="empty">Empty hat. Add at least 3 people to begin.</p>
-          ) : (
-            <ul className="list">
-              {participants.map((p) => (
-                <li key={p.id}>
-                  <div className="person">
-                    <strong>{p.name}</strong>
-                    <span>{[p.phone, p.email].filter(Boolean).join(" · ")}</span>
-                    <span className="lang-summary">
-                      Receives: {labelsFor(p, availableMessages) || "none"}
-                    </span>
-                    <div className="lang-options compact">
-                      {availableMessages.map((m) => (
-                        <label key={`${p.id}-${m.id}`} className="lang-option">
-                          <input
-                            type="checkbox"
-                            checked={p.languageIds.includes(m.id)}
-                            disabled={busy}
-                            onChange={() => void onToggleParticipantLanguage(p, m.id)}
-                          />
-                          <span>{m.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    className="btn btn-ghost"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void onRemove(p.id)}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+        {notice ? (
+          <p className="status ok" role="status">
+            {notice}
+          </p>
+        ) : null}
 
-          <div className="actions">
-            <button
-              className="btn btn-primary"
-              type="button"
-              disabled={busy || !ready}
-              onClick={() => void onAssign()}
-            >
-              {config?.museumMode ? "Shake & preview" : "Shake & notify"}
-            </button>
-            <button
-              className="btn btn-secondary"
-              type="button"
-              disabled={busy}
-              onClick={() => void onReset()}
-            >
-              {config?.museumMode ? "Reset demo roster" : "Empty the hat"}
-            </button>
-          </div>
-
-          {notice ? (
-            <p className="status ok" role="status">
-              {notice}
-            </p>
-          ) : null}
-
-          {error ? (
-            <p className="status error" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          {result ? (
-            <div className="status ok" role="status">
-              Paired {result.assignmentCount} people via{" "}
-              <strong>{config?.notifyProvider}</strong>. Recipient names stay private
-              {result.museumMode ? " — stub delivery details below." : "."}
-            </div>
-          ) : null}
-
-          {result?.museumMode && result.deliveries.length > 0 ? (
-            <div className="deliveries" aria-label="Stub deliveries">
-              {result.deliveries.map((d) => (
-                <article className="delivery" key={`${d.santaId}-${d.to}`}>
-                  <strong>
-                    {d.santaName} → {d.to}
-                  </strong>{" "}
-                  <span className="chip">{d.status}</span>
-                  <pre>{d.body}</pre>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </section>
+        {error ? (
+          <p className="status error" role="alert">
+            {error}
+          </p>
+        ) : null}
       </main>
     </>
   );
