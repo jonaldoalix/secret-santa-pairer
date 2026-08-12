@@ -26,9 +26,7 @@ export const smtpNotifier: Notifier = {
         budget: ctx.config.giftBudget,
         eventDate: ctx.config.eventDate,
         eventLabel: ctx.config.eventLabel,
-        locale: ctx.config.messageLocale,
-        templateEn: ctx.config.templateEn,
-        templateEs: ctx.config.templateEs,
+        messages: ctx.config.messages,
       });
       const to = destinationFor(assignment, "smtp");
 

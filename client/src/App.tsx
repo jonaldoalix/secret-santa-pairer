@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type {
   AssignResult,
-  MessageLocale,
+  MessageBlock,
   Participant,
   PublicConfig,
 } from "../../shared/types";
@@ -22,9 +22,7 @@ type SettingsDraft = {
   giftBudget: string;
   eventDate: string;
   eventLabel: string;
-  messageLocale: MessageLocale;
-  templateEn: string;
-  templateEs: string;
+  messages: MessageBlock[];
 };
 
 function draftFromConfig(cfg: PublicConfig): SettingsDraft {
@@ -32,9 +30,7 @@ function draftFromConfig(cfg: PublicConfig): SettingsDraft {
     giftBudget: cfg.giftBudget,
     eventDate: cfg.eventDate,
     eventLabel: cfg.eventLabel,
-    messageLocale: cfg.messageLocale,
-    templateEn: cfg.templateEn,
-    templateEs: cfg.templateEs,
+    messages: cfg.messages.map((m) => ({ ...m })),
   };
 }
 
@@ -51,6 +47,7 @@ export function App() {
   const [result, setResult] = useState<AssignResult | null>(null);
 
   const ready = participants.length >= 3;
+  const languageChips = settings?.messages ?? config?.messages ?? [];
 
   const contactHint = useMemo(() => {
     if (!config) return "";
@@ -76,6 +73,37 @@ export function App() {
       }
     })();
   }, []);
+
+  function updateMessage(index: number, patch: Partial<MessageBlock>) {
+    if (!settings) return;
+    const messages = settings.messages.map((m, i) =>
+      i === index ? { ...m, ...patch } : m,
+    );
+    setSettings({ ...settings, messages });
+  }
+
+  function addMessage() {
+    if (!settings) return;
+    if (settings.messages.length >= 8) return;
+    setSettings({
+      ...settings,
+      messages: [
+        ...settings.messages,
+        {
+          label: `Language ${settings.messages.length + 1}`,
+          body: "Hello {santa}! Your recipient is {recipient}. Budget {budget}. See you {date}!",
+        },
+      ],
+    });
+  }
+
+  function removeMessage(index: number) {
+    if (!settings || settings.messages.length <= 1) return;
+    setSettings({
+      ...settings,
+      messages: settings.messages.filter((_, i) => i !== index),
+    });
+  }
 
   async function onSaveSettings(event: FormEvent) {
     event.preventDefault();
@@ -204,9 +232,11 @@ export function App() {
               </span>
               <span className="chip">{settings?.eventDate ?? config?.eventDate}</span>
               <span className="chip">Notify: {config?.notifyProvider}</span>
-              <span className="chip">
-                Locale: {settings?.messageLocale ?? config?.messageLocale}
-              </span>
+              {languageChips.map((m) => (
+                <span className="chip" key={`${m.label}-${m.body.slice(0, 12)}`}>
+                  {m.label}
+                </span>
+              ))}
             </div>
           ) : null}
         </header>
@@ -215,9 +245,10 @@ export function App() {
           <section className="panel" aria-labelledby="settings-heading">
             <h2 id="settings-heading">Host controls</h2>
             <p className="panel-intro">
-              Tune the event copy for this run. Placeholders:{" "}
-              <code>{"{santa}"}</code>, <code>{"{recipient}"}</code>,{" "}
-              <code>{"{budget}"}</code>, <code>{"{date}"}</code>, <code>{"{event}"}</code>.
+              Write the notify text in any language(s). Each block is included in the
+              message. Placeholders: <code>{"{santa}"}</code>,{" "}
+              <code>{"{recipient}"}</code>, <code>{"{budget}"}</code>,{" "}
+              <code>{"{date}"}</code>, <code>{"{event}"}</code>.
             </p>
             <form className="form-grid two" onSubmit={onSaveSettings}>
               <label>
@@ -240,7 +271,7 @@ export function App() {
                   required
                 />
               </label>
-              <label>
+              <label style={{ gridColumn: "1 / -1" }}>
                 When you meet
                 <input
                   value={settings.eventDate}
@@ -251,50 +282,56 @@ export function App() {
                   required
                 />
               </label>
-              <label>
-                Message language
-                <select
-                  value={settings.messageLocale}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      messageLocale: e.target.value as MessageLocale,
-                    })
-                  }
-                >
-                  <option value="bilingual">Bilingual EN + ES</option>
-                  <option value="en">English only</option>
-                  <option value="es">Spanish only</option>
-                </select>
-              </label>
-              <label style={{ gridColumn: "1 / -1" }}>
-                English template
-                <textarea
-                  value={settings.templateEn}
-                  onChange={(e) =>
-                    setSettings({ ...settings, templateEn: e.target.value })
-                  }
-                  required
-                />
-              </label>
-              <label style={{ gridColumn: "1 / -1" }}>
-                Spanish template
-                <textarea
-                  value={settings.templateEs}
-                  onChange={(e) =>
-                    setSettings({ ...settings, templateEs: e.target.value })
-                  }
-                  required
-                />
-              </label>
+
+              {settings.messages.map((message, index) => (
+                <div className="message-block" key={`msg-${index}`}>
+                  <label>
+                    Language label
+                    <input
+                      value={message.label}
+                      onChange={(e) => updateMessage(index, { label: e.target.value })}
+                      placeholder="Português"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Message body
+                    <textarea
+                      value={message.body}
+                      onChange={(e) => updateMessage(index, { body: e.target.value })}
+                      required
+                    />
+                  </label>
+                  {settings.messages.length > 1 ? (
+                    <button
+                      className="btn btn-ghost"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => removeMessage(index)}
+                    >
+                      Remove this language
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+
               <div className="actions" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
-                <button className="btn btn-secondary" type="submit" disabled={busy}>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  disabled={busy || settings.messages.length >= 8}
+                  onClick={addMessage}
+                >
+                  Add another language
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={busy}>
                   Save event settings
                 </button>
               </div>
             </form>
             <p className="template-hint">
-              Settings apply to this server session (restart resets to .env defaults).
+              All language blocks are sent together (blank line between). Labels are for
+              you only. Settings apply to this server session.
             </p>
           </section>
         ) : null}

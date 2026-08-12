@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildNotifyBody } from "./message.js";
+import { buildNotifyBody, DEFAULT_MESSAGES } from "./message.js";
 
 describe("buildNotifyBody", () => {
   const base = {
@@ -10,19 +10,31 @@ describe("buildNotifyBody", () => {
     eventLabel: "Secret Santa",
   };
 
-  it("builds bilingual messages by default", () => {
-    const body = buildNotifyBody({ ...base, locale: "bilingual" });
+  it("joins every language block", () => {
+    const body = buildNotifyBody({ ...base, messages: DEFAULT_MESSAGES });
     expect(body).toContain("Alex");
     expect(body).toContain("Bailey");
     expect(body).toContain("¡Hola");
   });
 
-  it("supports custom templates", () => {
+  it("supports any custom language set", () => {
     const body = buildNotifyBody({
       ...base,
-      locale: "en",
-      templateEn: "{santa} -> {recipient} ({budget})",
+      messages: [
+        { label: "Português", body: "Olá {santa}! Seu amigo oculto é {recipient}." },
+        { label: "Français", body: "Bonjour {santa}! Ton secret santa est {recipient}." },
+      ],
     });
-    expect(body).toBe("Alex -> Bailey ($25)");
+    expect(body).toBe(
+      "Olá Alex! Seu amigo oculto é Bailey.\n\nBonjour Alex! Ton secret santa est Bailey.",
+    );
+  });
+
+  it("allows a single language only", () => {
+    const body = buildNotifyBody({
+      ...base,
+      messages: [{ label: "Deutsch", body: "Hallo {santa}, dein Partner ist {recipient}." }],
+    });
+    expect(body).toBe("Hallo Alex, dein Partner ist Bailey.");
   });
 });

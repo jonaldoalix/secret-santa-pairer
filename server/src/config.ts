@@ -3,9 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { z } from "zod";
+import { DEFAULT_MESSAGES } from "../../shared/message.js";
 import type {
   ContactMode,
-  MessageLocale,
+  MessageBlock,
   NotifyProviderId,
 } from "../../shared/types.js";
 
@@ -33,8 +34,6 @@ const providerSchema = z.enum([
   "http_sms",
 ]);
 
-const localeSchema = z.enum(["en", "es", "bilingual"]);
-
 function boolEnv(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined || value === "") return fallback;
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
@@ -46,6 +45,34 @@ function contactModeFor(provider: NotifyProviderId): ContactMode {
   return "phone";
 }
 
+function seedMessages(): MessageBlock[] {
+  const fromJson = process.env.MESSAGE_TEMPLATES_JSON?.trim();
+  if (fromJson) {
+    try {
+      const parsed = JSON.parse(fromJson) as MessageBlock[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((m) => ({
+          label: String(m.label || "Message").slice(0, 40),
+          body: String(m.body || ""),
+        }));
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  const en = process.env.MESSAGE_TEMPLATE_EN?.trim();
+  const es = process.env.MESSAGE_TEMPLATE_ES?.trim();
+  if (en || es) {
+    const blocks: MessageBlock[] = [];
+    if (en) blocks.push({ label: "English", body: en });
+    if (es) blocks.push({ label: "Español", body: es });
+    return blocks;
+  }
+
+  return DEFAULT_MESSAGES.map((m) => ({ ...m }));
+}
+
 export interface AppConfig {
   port: number;
   museumMode: boolean;
@@ -54,9 +81,7 @@ export interface AppConfig {
   giftBudget: string;
   eventDate: string;
   eventLabel: string;
-  messageLocale: MessageLocale;
-  templateEn?: string;
-  templateEs?: string;
+  messages: MessageBlock[];
   seedMuseumDemo: boolean;
   twilio: {
     accountSid: string;
@@ -91,9 +116,6 @@ export function loadConfig(): AppConfig {
   const notifyProvider = providerSchema.parse(
     process.env.NOTIFY_PROVIDER || (museumMode ? "stub" : "stub"),
   );
-  const messageLocale = localeSchema.parse(
-    process.env.MESSAGE_LOCALE || "bilingual",
-  );
 
   return {
     port: Number(process.env.PORT || 3024),
@@ -103,9 +125,7 @@ export function loadConfig(): AppConfig {
     giftBudget: process.env.GIFT_BUDGET || "$25",
     eventDate: process.env.EVENT_DATE || "the 24th",
     eventLabel: process.env.EVENT_LABEL || "Secret Santa",
-    messageLocale,
-    templateEn: process.env.MESSAGE_TEMPLATE_EN || undefined,
-    templateEs: process.env.MESSAGE_TEMPLATE_ES || undefined,
+    messages: seedMessages(),
     seedMuseumDemo: boolEnv(process.env.SEED_MUSEUM_DEMO, museumMode),
     twilio: {
       accountSid: process.env.TWILIO_ACCOUNT_SID || "",

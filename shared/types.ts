@@ -5,9 +5,13 @@ export type NotifyProviderId =
   | "aws_sns"
   | "http_sms";
 
-export type MessageLocale = "en" | "es" | "bilingual";
-
 export type ContactMode = "phone" | "email" | "either";
+
+export interface MessageBlock {
+  /** Host-facing label only (English, Español, Português, …) — not sent in the message. */
+  label: string;
+  body: string;
+}
 
 export interface Participant {
   id: string;
@@ -38,9 +42,7 @@ export interface PublicConfig {
   giftBudget: string;
   eventDate: string;
   eventLabel: string;
-  messageLocale: MessageLocale;
-  templateEn: string;
-  templateEs: string;
+  messages: MessageBlock[];
   participantCount: number;
 }
 
@@ -48,9 +50,7 @@ export interface EditableConfig {
   giftBudget: string;
   eventDate: string;
   eventLabel: string;
-  messageLocale: MessageLocale;
-  templateEn: string;
-  templateEs: string;
+  messages: MessageBlock[];
 }
 
 export interface AssignResult {

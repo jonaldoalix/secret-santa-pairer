@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { z } from "zod";
-import { DEFAULT_EN, DEFAULT_ES } from "../../shared/message.js";
 import { assignSecretSantas } from "../../shared/pairing.js";
 import { formatPhoneDisplay, normalizePhone } from "../../shared/phone.js";
 import type { AssignResult, PublicConfig } from "../../shared/types.js";
@@ -20,13 +19,16 @@ const participantBody = z.object({
     .pipe(z.union([z.undefined(), z.string().email()])),
 });
 
+const messageBlock = z.object({
+  label: z.string().trim().min(1).max(40),
+  body: z.string().trim().min(1).max(2000),
+});
+
 const editableConfigBody = z.object({
   giftBudget: z.string().trim().min(1).max(40),
   eventDate: z.string().trim().min(1).max(80),
   eventLabel: z.string().trim().min(1).max(80),
-  messageLocale: z.enum(["en", "es", "bilingual"]),
-  templateEn: z.string().trim().min(1).max(2000),
-  templateEs: z.string().trim().min(1).max(2000),
+  messages: z.array(messageBlock).min(1).max(8),
 });
 
 function publicConfig(config: AppConfig, store: ParticipantStore): PublicConfig {
@@ -37,9 +39,7 @@ function publicConfig(config: AppConfig, store: ParticipantStore): PublicConfig 
     giftBudget: config.giftBudget,
     eventDate: config.eventDate,
     eventLabel: config.eventLabel,
-    messageLocale: config.messageLocale,
-    templateEn: config.templateEn || DEFAULT_EN,
-    templateEs: config.templateEs || DEFAULT_ES,
+    messages: config.messages.map((m) => ({ ...m })),
     participantCount: store.count(),
   };
 }
@@ -65,9 +65,7 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
     config.giftBudget = parsed.data.giftBudget;
     config.eventDate = parsed.data.eventDate;
     config.eventLabel = parsed.data.eventLabel;
-    config.messageLocale = parsed.data.messageLocale;
-    config.templateEn = parsed.data.templateEn;
-    config.templateEs = parsed.data.templateEs;
+    config.messages = parsed.data.messages.map((m) => ({ ...m }));
 
     res.json(publicConfig(config, store));
   });
