@@ -13,7 +13,8 @@ function shuffleInPlace<T>(items: T[], random = Math.random): T[] {
 /** True if mapping i -> perm[i] is a derangement with no 2-cycles. */
 export function isValidSecretSantaPerm(perm: number[]): boolean {
   const n = perm.length;
-  if (n < 2 || n % 2 !== 0) return false;
+  // Need ≥3 so a derangement without mutual pairs is possible.
+  if (n < 3) return false;
 
   for (let i = 0; i < n; i += 1) {
     const j = perm[i];
@@ -32,7 +33,8 @@ export function isValidSecretSantaPerm(perm: number[]): boolean {
 
 /**
  * Pair each santa with a unique recipient: no self-gifts, no mutual pairs.
- * Requires an even participant count >= 2.
+ * Works for any count ≥ 3 (odd or even). Two people can only swap with each other,
+ * so we require at least three.
  */
 export function assignSecretSantas(
   participants: Participant[],
@@ -40,11 +42,8 @@ export function assignSecretSantas(
   maxAttempts = 5000,
 ): Assignment[] {
   const n = participants.length;
-  if (n < 2) {
-    throw new Error("Need at least 2 participants.");
-  }
-  if (n % 2 !== 0) {
-    throw new Error("Participant count must be even.");
+  if (n < 3) {
+    throw new Error("Need at least 3 participants (2 people can only swap with each other).");
   }
 
   const indices = participants.map((_, i) => i);

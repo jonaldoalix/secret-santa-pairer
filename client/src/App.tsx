@@ -50,7 +50,7 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [result, setResult] = useState<AssignResult | null>(null);
 
-  const evenReady = participants.length >= 2 && participants.length % 2 === 0;
+  const ready = participants.length >= 3;
 
   const contactHint = useMemo(() => {
     if (!config) return "";
@@ -153,8 +153,8 @@ export function App() {
   }
 
   async function onAssign() {
-    if (!evenReady) {
-      setError("Add an even number of participants (at least 2) before notifying.");
+    if (!ready) {
+      setError("Add at least 3 participants before notifying.");
       return;
     }
     const confirmed = window.confirm(
@@ -196,13 +196,17 @@ export function App() {
             Drop in the crew, give the hat a shake, and send each person their recipient
             without anyone — including you — spoiling the surprise.
           </p>
-          {config ? (
+          {config || settings ? (
             <div className="meta" aria-label="Event settings">
-              <span className="chip">{config.eventLabel}</span>
-              <span className="chip">Budget {config.giftBudget}</span>
-              <span className="chip">{config.eventDate}</span>
-              <span className="chip">Notify: {config.notifyProvider}</span>
-              <span className="chip">Locale: {config.messageLocale}</span>
+              <span className="chip">{settings?.eventLabel ?? config?.eventLabel}</span>
+              <span className="chip">
+                Budget {settings?.giftBudget ?? config?.giftBudget}
+              </span>
+              <span className="chip">{settings?.eventDate ?? config?.eventDate}</span>
+              <span className="chip">Notify: {config?.notifyProvider}</span>
+              <span className="chip">
+                Locale: {settings?.messageLocale ?? config?.messageLocale}
+              </span>
             </div>
           ) : null}
         </header>
@@ -348,11 +352,11 @@ export function App() {
         <section className="panel" aria-labelledby="list-heading">
           <h2 id="list-heading">
             In the hat ({participants.length})
-            {!evenReady && participants.length > 0 ? " — need an even count" : ""}
+            {!ready && participants.length > 0 ? " — need at least 3" : ""}
           </h2>
 
           {participants.length === 0 ? (
-            <p className="empty">Empty hat. Add an even number of people to begin.</p>
+            <p className="empty">Empty hat. Add at least 3 people to begin.</p>
           ) : (
             <ul className="list">
               {participants.map((p) => (
@@ -378,7 +382,7 @@ export function App() {
             <button
               className="btn btn-primary"
               type="button"
-              disabled={busy || !evenReady}
+              disabled={busy || !ready}
               onClick={() => void onAssign()}
             >
               {config?.museumMode ? "Shake & preview" : "Shake & notify"}

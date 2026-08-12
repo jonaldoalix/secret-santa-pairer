@@ -4,10 +4,10 @@ Privately shuffle Secret Santa assignments and notify each participant of their 
 
 ## Features
 
-- Host flow: add participants → require an even count → shuffle → notify
-- Fair pairing: no self-gifts, no mutual pairs
+- Host flow: add participants (3+) → shuffle → notify
+- Fair pairing for odd or even groups: no self-gifts, no mutual pairs
 - Pluggable notify providers: `stub`, `twilio`, `smtp`, `aws_sns`, `http_sms`
-- Configurable budget, event date/label, locale (`en` / `es` / `bilingual`), and message templates
+- Configurable budget, event date/label, locale (`en` / `es` / `bilingual`), and message templates (editable in the host UI)
 - Museum mode: stub deliveries only (safe public demo)
 - Responsive UI for phone, tablet, and desktop
 

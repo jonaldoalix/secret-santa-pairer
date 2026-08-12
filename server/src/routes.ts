@@ -138,9 +138,10 @@ export function createApiRouter(config: AppConfig, store: ParticipantStore): Rou
     try {
       assertProviderReady(config);
       const participants = store.list();
-      if (participants.length < 2 || participants.length % 2 !== 0) {
+      if (participants.length < 3) {
         res.status(400).json({
-          error: "Need an even number of participants (at least 2) before assigning.",
+          error:
+            "Need at least 3 participants before assigning (2 people can only swap with each other).",
         });
         return;
       }
