@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,9 +19,11 @@ afterEach(() => {
 describe("findRoot", () => {
   it("returns start when no package.json exists up the tree", () => {
     const start = mkdtempSync(join(tmpdir(), "app-no-package-root-"));
+    const spy = vi.spyOn(fs, "existsSync").mockReturnValue(false);
     try {
       expect(findRoot(start)).toBe(start);
     } finally {
+      spy.mockRestore();
       rmSync(start, { recursive: true, force: true });
     }
   });
