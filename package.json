@@ -34,7 +34,7 @@
     "@aws-sdk/client-sns": "^3.848.0",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
-    "nodemailer": "10.0.10",
+    "nodemailer": "10.1.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "twilio": "^5.8.0",
@@ -68,6 +68,6 @@
     "source-map-js": "1.2.2",
     "axios": "1.20.0",
     "follow-redirects": "1.16.1",
-    "nodemailer": "10.0.10"
+    "nodemailer": "10.1.4"
   }
 }
